@@ -47,14 +47,7 @@ export default async function Home() {
                 {/* Dashboard Preview */}
                 <section className="flex justify-center px-4 sm:px-6 lg:px-8">
                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-lg">
-                        <Image 
-                            src={landingImage} 
-                            alt="Dashboard Preview" 
-                            width={800} 
-                            height={400} 
-                            priority 
-                            style={{ width: "auto", height: "auto" }}
-                        />
+                        <Image src={landingImage} alt="Dashboard Preview" width={800} height={400} />
                     </div>
                 </section>
             </main>
