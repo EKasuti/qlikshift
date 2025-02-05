@@ -34,8 +34,9 @@ export function SideBar() {
                             <Link
                                 href={item.href}
                                 className={cn(
-                                    "flex flex-col h-[60px] w-full items-center justify-center transition ",
-                                    pathname === item.href
+                                    "flex flex-col h-[60px] w-full items-center justify-center transition",
+                                    (item.href === "/dashboard" && pathname === item.href) || 
+                                    (item.href !== "/dashboard" && pathname.startsWith(item.href))
                                         ? "bg-white text-black font-bold"
                                         : "bg-black text-white"
                                 )}
