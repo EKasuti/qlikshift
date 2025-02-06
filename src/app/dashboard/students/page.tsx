@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Student } from "@/types";
+import { Card } from "@/components/ui/card";
 
 
 export default function StudentsPage() {
@@ -126,51 +127,55 @@ export default function StudentsPage() {
             {loading ? (
                 <p>Loading students...</p>
             ) : students.length > 0 ? (
-                <div className="overflow-x-auto border rounded-lg">
-                    {/* Table Title */}
-                    <p className="text-center p-4 font-bold text-lg">Students for {selectedTerm} {selectedYear}</p>
-                    
-                    <table className="w-full border-collapse">
-                        {/* Table Head */}
-                        <thead className="bg-primary text-white">
-                            <tr>
-                                <th className="p-2">Id</th>
-                                <th className="border-l p-2 text-start">Preferred Name</th>
-                                <th className="border-l p-2 text-start">Email</th>
-                                <th className="border-l p-2 text-start">Jobs</th>
-                                <th className="border-l p-2 text-start">Preferred Desk</th>
-                                <th className="border-l p-2 text-start">Hrs / Wk</th>
-                                <th className="border-l p-2 text-start">Seniority</th>
-                                <th className="border-l p-2 text-start">Max shifts</th>
-                                <th className="border-l p-2 text-start">Assigned shifts</th>
-                            </tr>
-                        </thead>
-
-                        {/* Table Body */}
-                        <tbody>
-                            {students.map((student, index) => (
-                                <tr key={student.id} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                                    <td className="border p-2">{index + 1}</td>
-                                    <td className="border p-2 text-start">
-                                        <Link 
-                                            href={`/dashboard/students/${student.id}?selectedTerm=${selectedTerm}&selectedYear=${selectedYear}`} 
-                                            className="text-blue-600 hover:underline"
-                                        >
-                                            {student.preferred_name}
-                                        </Link>
-                                    </td>
-                                    <td className="border p-2 text-start">{student.email}</td>
-                                    <td className="border p-2 text-start">{student.jobs}</td>
-                                    <td className="border p-2 text-start">{student.preferred_desk}</td>
-                                    <td className="border p-2 text-start">{student.preferred_hours_per_week}</td>
-                                    <td className="border p-2 text-start">{student.seniority}</td>
-                                    <td className="border p-2 text-start">{student.max_shifts}</td>
-                                    <td className="border p-2 text-start">{student.assigned_shifts}</td>  
+                <Card className="p-6">
+                    <div className="overflow-x-auto">
+                        {/* Table Title */}
+                        <p className="text-center mb-2 font-bold text-lg">Students for {selectedTerm} {selectedYear}</p>
+                        
+                        <table className="w-full border-collapse">
+                            {/* Table Head */}
+                            <thead className="bg-primary text-white">
+                                <tr>
+                                    <th className="p-2 rounded-tl-lg">Id</th>
+                                    <th className="border-l p-2 text-start">Preferred Name</th>
+                                    <th className="border-l p-2 text-start">Email</th>
+                                    <th className="border-l p-2 text-start">Jobs</th>
+                                    <th className="border-l p-2 text-start">Preferred Desk</th>
+                                    <th className="border-l p-2 text-start">Hrs / Wk</th>
+                                    <th className="border-l p-2 text-start">Seniority</th>
+                                    <th className="border-l p-2 text-start">Max shifts</th>
+                                    <th className="border-l p-2 text-start rounded-tr-lg">Assigned shifts</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+
+                            {/* Table Body */}
+                            <tbody>
+                                {students.map((student, index) => (
+                                    <tr key={student.id} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                                        <td className="border p-2">{index + 1}</td>
+                                        <td className="border p-2 text-start">
+                                            <Link 
+                                                href={`/dashboard/students/${student.id}?selectedTerm=${selectedTerm}&selectedYear=${selectedYear}`} 
+                                                className="text-blue-600 hover:underline"
+                                            >
+                                                {student.preferred_name}
+                                            </Link>
+                                        </td>
+                                        <td className="border p-2 text-start">{student.email}</td>
+                                        <td className="border p-2 text-start">{student.jobs}</td>
+                                        <td className="border p-2 text-start">{student.preferred_desk}</td>
+                                        <td className="border p-2 text-start">{student.preferred_hours_per_week}</td>
+                                        <td className="border p-2 text-start">{student.seniority}</td>
+                                        <td className="border p-2 text-start">{student.max_shifts}</td>
+                                        <td className="border p-2 text-start">{student.assigned_shifts}</td>  
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                </Card>
+               
             ) : (
                 <p>Students not available.</p>
             )}
