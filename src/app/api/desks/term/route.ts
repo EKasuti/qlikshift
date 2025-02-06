@@ -44,9 +44,9 @@ export async function POST(request: Request) {
             const { data: termSlot, error: termSlotError } = await supabaseAdmin
                 .from('term_slots')
                 .insert({
-                desk_id: desk.id,
-                day_of_week: slot.day_of_week,
-                is_open: slot.is_open
+                    desk_id: desk.id,
+                    day_of_week: slot.day_of_week,
+                    is_open: slot.is_open
                 })
                 .select()
                 .single();
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
                 const shifts = slot.shifts && slot.shifts.length > 0 ? slot.shifts : [{
                     start_time: body.opening_time,
                     end_time: body.closing_time,
-                    max_students: 1  
+                    max_students: 1
                 }];
 
                 // Process shifts and create 2-hour slots
@@ -93,11 +93,11 @@ export async function POST(request: Request) {
                             const { error: shiftError } = await supabaseAdmin
                                 .from('term_shifts')
                                 .insert({
-                                term_slot_id: termSlot.id,
-                                start_time: startTime.toTimeString().slice(0, 5),
-                                end_time: endTimeString,
-                                max_students: shift.max_students || 1, // use provided value or default to 2
-                                students_detailed: Array(shift.max_students || 2).fill('Open')
+                                    term_slot_id: termSlot.id,
+                                    start_time: startTime.toTimeString().slice(0, 5),
+                                    end_time: endTimeString,
+                                    max_students: shift.max_students || 1, // use provided value or default to 2
+                                    students_detailed: Array(shift.max_students || 2).fill('Open')
                                 });
 
                             if (shiftError) throw shiftError;
@@ -126,19 +126,19 @@ export async function GET(request: Request) {
         const desk = searchParams.get('desk');
 
         let query = supabaseAdmin
-        .from('term_desks')
-        .select(` *, term_slots:term_slots (*, term_shifts:term_shifts (*) )`)
-        .order('created_at', { ascending: false });
+            .from('term_desks')
+            .select(` *, term_slots:term_slots (*, term_shifts:term_shifts (*) )`)
+            .order('created_at', { ascending: false });
 
         // Apply filters if provided
         if (year) {
-        query = query.eq('year', year);
+            query = query.eq('year', year);
         }
         if (term) {
-        query = query.eq('term_or_break', term);
+            query = query.eq('term_or_break', term);
         }
         if (desk) {
-        query = query.ilike('desk_name', `%${desk}%`);
+            query = query.ilike('desk_name', `%${desk}%`);
         }
 
         const { data: desks, error } = await query;
