@@ -1,10 +1,10 @@
 import { supabaseAdmin } from '@/lib/supabase';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         if (!supabaseAdmin) throw new Error('Could not connect to database');
 
-        const { id } = params;
+        const { id } = await params;
 
         // Fetch the student by ID
         const { data: student, error } = await supabaseAdmin
