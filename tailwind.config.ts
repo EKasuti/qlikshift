@@ -12,7 +12,11 @@ export default {
               primary: {
                   DEFAULT: '#01693E',
                   foreground: 'hsl(var(--primary-foreground))'
-              }
+              },
+              'stats-purple': '#F2EEFD',
+              'stats-blue': '#EDF8FA',
+              'stats-orange': '#FEF5EB',
+              'stats-green': '#F3FCF3',
           }
       }
   },
