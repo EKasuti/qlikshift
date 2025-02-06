@@ -142,9 +142,9 @@ export default function StudentDetailsPage() {
                     {selectedTerm.endsWith("Term") ? (
                         <table className="w-full border-collapse">
                             {/* Table head */}
-                            <thead className="bg-primary text-white">
+                            <thead className="bg-[#F5F5F5]">
                                 <tr>
-                                    <th className="p-2 rounded-tl-lg">Time/Day</th>
+                                    <th className="p-2 rounded-tl-lg bg-primary text-white">Time/Day</th>
                                     {days.map((day, index) => (
                                         <th key={day} className={`border-l px-4 py-2 font-semibold ${index === days.length - 1 ? 'rounded-tr-lg' : ''}`}>
                                             {day}
@@ -175,11 +175,11 @@ export default function StudentDetailsPage() {
                         // INTERIM STUDENTS
                         <table className="w-full border-collapse">
                             {/* Table Head */}
-                            <thead className="bg-primary text-white">
+                            <thead className="bg-[#F5F5F5]">
                                 <tr>
-                                    <th className="p-2 rounded-tl-lg">Date/Time</th>
+                                    <th className="p-2 rounded-tl-lg bg-primary text-white">Date/Time</th>
                                     {interimHours.map((hour, index) => (
-                                        <th key={hour} className={`border-l px-4 py-2 font-semibold ${index === interimHours.length - 1 ? 'rounded-tr-lg' : ''}`}>
+                                        <th key={hour} className={`border-l px-2 py-2 font-semibold ${index === interimHours.length - 1 ? 'rounded-tr-lg' : ''}`}>
                                             {hour}
                                         </th>
                                     ))}
