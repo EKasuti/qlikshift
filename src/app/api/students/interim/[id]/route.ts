@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             .from('interim_students')
             .select('*, interim_availability_slots(*)')
             .eq('id', id)
-            .single(); // Gets a single student
+            .single(); // Get a single student
 
         if (error || !student) {
             return new Response(JSON.stringify({ error: 'Student not found' }), { status: 404 });
@@ -19,7 +19,6 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
         return new Response(JSON.stringify(student), { status: 200 });
     } catch (error) {
-        console.error('Error retrieving student:', error);
         return new Response(JSON.stringify({ error: (error as Error).message }), { status: 500 });
     }
 }
