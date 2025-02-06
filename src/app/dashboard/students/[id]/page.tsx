@@ -1,0 +1,208 @@
+"use client"
+
+import { useParams, useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
+import { Avatar } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { InterimStudent, TermStudent } from "@/types"
+
+const timeSlots = [
+    "08:00 - 10:00",
+    "10:00 - 12:00",
+    "12:00 - 14:00",
+    "14:00 - 16:00",
+    "16:00 - 18:00",
+    "18:00 - 20:00",
+    "20:00 - 22:00",
+    "22:00 - 00:00",
+]
+
+const interimHours = [
+    "08:00:00 - 10:00:00",
+    "10:00:00 - 12:00:00",
+    "12:00:00 - 14:00:00",
+    "14:00:00 - 16:00:00",
+    "16:00:00 - 18:00:00",
+    "18:00:00 - 20:00:00",
+]
+
+const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+// Function to format the date
+const formatDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    
+    // Full date format
+    const options: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric' };
+    const formattedDate = date.toLocaleDateString('en-US', options);
+    
+    // Extract short weekday (3chars)
+    const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
+
+    return `${formattedDate} (${dayOfWeek})`; 
+}
+
+export default function StudentDetailsPage() {
+    const params = useParams()
+    const searchParams = useSearchParams()
+    const id = params.id as string
+    const selectedTerm = searchParams.get('selectedTerm') || ''
+    const selectedYear = searchParams.get('selectedYear') || ''
+    const isInterimStudent = selectedTerm.endsWith("Break")
+    const [student, setStudent] = useState<TermStudent | InterimStudent | null>(null)
+    const [loading, setLoading] = useState(true)
+
+    // Use effect to get student details
+    useEffect(() => {
+        if (id) {
+        const fetchStudent = async () => {
+            const response = isInterimStudent ? await fetch(`/api/students/interim/${id}`) : await fetch(`/api/students/term/${id}`)
+            
+            const data = await response.json()
+            setStudent(response.ok ? data : null)
+            setLoading(false)
+        }
+        fetchStudent()
+        }
+    }, [id, selectedTerm, isInterimStudent])
+
+    // Function to get consolidated availability
+    const getConsolidatedAvailability = () => {
+        if (!student || !('interim_availability_slots' in student)) return []
+        
+        const uniqueDates = [...new Set(student.interim_availability_slots.map(slot => slot.date))]
+        return uniqueDates.map(date => {
+            const slotsForDate = student.interim_availability_slots.filter(slot => slot.date === date)
+            return {
+                date,
+                slots: interimHours.map(hour => {
+                    const matchingSlot = slotsForDate.find(slot => slot.time_slot === hour)
+                    return matchingSlot?.availability_status || null
+                })
+            }
+        })
+    }
+
+    if (loading) return <p>Loading...</p>
+    if (!student) return <p>Student not found.</p>
+
+    return (
+        <div className="mx-auto space-y-6">
+            {/* Button to return to all students */}
+            <div>
+                <Button className="bg-white hover:text-white hover:bg-primary" onClick={() => window.history.back()}>
+                    Back to All Students
+                </Button>
+            </div>
+            <Card className="p-6">
+                <div className="flex items-start justify-between">
+                    <div className="flex gap-6">
+                        {/* Avatar */}
+                        <Avatar className="h-24 w-24 bg-primary flex items-center justify-center">
+                            <span className="text-3xl font-bold text-white">
+                                {student.preferred_name.split(" ").map(name => name.charAt(0)).join("")}
+                            </span>
+                        </Avatar>
+
+                        {/* Student's details */}
+                        <div className="space-y-2">
+                            <div>
+                                <span className="font-semibold">Name: </span><span>{student.preferred_name}</span>
+                            </div>
+                            <div>
+                                <span className="font-semibold">Email: </span><span>{student.email}</span>
+                            </div>
+                            <div>
+                                <span className="font-semibold">Desks: </span><span>{student.jobs}</span>
+                            </div>
+                            <div>
+                                <span className="font-semibold">Seniority: </span><span>{student.seniority}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Card>
+
+            <Card className="p-6">
+                <div>
+                    <h2 className="text-lg font-semibold text-center">
+                        {student.preferred_name}&apos;s Availability for {selectedTerm} {selectedYear}
+                    </h2>
+
+                    <div className="mb-4">
+                        <span className="font-semibold">Assigned Shifts: </span>
+                        <span>{student.assigned_shifts}</span>
+                    </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                    {/* TERM STUDENTS */}
+                    {selectedTerm.endsWith("Term") ? (
+                        <table className="w-full border-collapse">
+                            {/* Table head */}
+                            <thead className="bg-primary text-white">
+                                <tr>
+                                    <th className="p-2 rounded-tl-lg">Time/Day</th>
+                                    {days.map((day, index) => (
+                                        <th key={day} className={`border-l px-4 py-2 font-semibold ${index === days.length - 1 ? 'rounded-tr-lg' : ''}`}>
+                                            {day}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+
+                            {/* Table body */}
+                            <tbody>
+                                {timeSlots.map((time) => (
+                                <tr key={time}>
+                                    <td className="border px-4 py-2 font-semibold">{time}</td>
+                                        {days.map((day) => {
+                                            const availability = (student as TermStudent).availability_slots?.find(slot => slot.day_of_week === day && slot.time_slot === time)
+                                            return (
+                                                <td key={`${day}-${time}`} className="border px-4 py-2 text-center">
+                                                    {availability ? <span>{availability.availability_status}</span> : null}
+                                                </td>
+                                            )
+                                        }
+                                    )}
+                                </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        // INTERIM STUDENTS
+                        <table className="w-full border-collapse">
+                            {/* Table Head */}
+                            <thead className="bg-primary text-white">
+                                <tr>
+                                    <th className="p-2 rounded-tl-lg">Date/Time</th>
+                                    {interimHours.map((hour, index) => (
+                                        <th key={hour} className={`border-l px-4 py-2 font-semibold ${index === interimHours.length - 1 ? 'rounded-tr-lg' : ''}`}>
+                                            {hour}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+
+                            {/* Table Body */}
+                            <tbody>
+                                {getConsolidatedAvailability().map(({date, slots}) => (
+                                    <tr key={date}>
+                                        <td className="border px-4 py-2 font-semibold text-center">{formatDate(date)}</td>
+                                        {slots.map((status, index) => (
+                                            <td key={`${date}-${index}`} className="border px-4 py-2 text-center">
+                                                {status}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </Card>
+        </div>
+    )
+}
