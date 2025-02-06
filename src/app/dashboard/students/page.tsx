@@ -134,9 +134,9 @@ export default function StudentsPage() {
                         
                         <table className="w-full border-collapse">
                             {/* Table Head */}
-                            <thead className="bg-primary text-white">
+                            <thead className="bg-[#F5F5F5]">
                                 <tr>
-                                    <th className="p-2 rounded-tl-lg">Id</th>
+                                    <th className="p-2 rounded-tl-lg bg-primary text-white">Id</th>
                                     <th className="border-l p-2 text-start">Preferred Name</th>
                                     <th className="border-l p-2 text-start">Email</th>
                                     <th className="border-l p-2 text-start">Jobs</th>
