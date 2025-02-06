@@ -17,18 +17,20 @@ export async function POST(request: NextRequest) {
         if (error) {
             return NextResponse.json(
                 { error: error.message },
-                { status: error.status || 400 } 
+                { status: error.status || 400 }
             );
         }
 
         const response = NextResponse.json(
-        { user: {
-            id: data.user?.id,
-            email: data.user?.email,
-            role: data.user?.role
-        },
-            
-        access_token: data.session?.access_token}, { status: 200 });
+            {
+                user: {
+                    id: data.user?.id,
+                    email: data.user?.email,
+                    role: data.user?.role
+                },
+
+                access_token: data.session?.access_token
+            }, { status: 200 });
 
         if (data.session) {
             response.cookies.set({
