@@ -44,6 +44,14 @@ const formatDate = (dateString: string) => {
     return `${formattedDate} (${dayOfWeek})`; 
 }
 
+// Define colors for each desk
+const deskColors: Record<string, string> = {
+    jmc: "bg-blue-200",
+    baker: "bg-green-200",
+    circ: "bg-yellow-200",
+    orozco: "bg-red-200",
+}
+
 export default function StudentDetailsPage() {
     const params = useParams()
     const searchParams = useSearchParams()
@@ -191,11 +199,14 @@ export default function StudentDetailsPage() {
                                 {getConsolidatedAvailability().map(({date, slots}) => (
                                     <tr key={date}>
                                         <td className="border px-4 py-2 font-semibold text-center">{formatDate(date)}</td>
-                                        {slots.map((status, index) => (
-                                            <td key={`${date}-${index}`} className="border px-4 py-2 text-center">
-                                                {status}
-                                            </td>
-                                        ))}
+                                        {slots.map((status, index) => {
+                                            const colorClass = status ? deskColors[status.toLowerCase()] : "";
+                                            return (
+                                                <td key={`${date}-${index}`} className={`border px-4 py-2 text-center ${colorClass}`}>
+                                                    {status}
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
                                 ))}
                             </tbody>
