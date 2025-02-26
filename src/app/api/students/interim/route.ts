@@ -34,6 +34,7 @@ interface InterimAvailabilitySlot {
     day_of_week: string;
     time_slot: string;
     availability_status: string;
+    scheduled_status: string;
     date: string;
 }
 
@@ -170,7 +171,7 @@ export async function POST(request: Request) {
             if (!dbStudent) continue;
 
             await supabaseAdmin
-                .from('interim_availability_slots')
+                .from('interim_students_availability_slots')
                 .delete()
                 .match({
                     student_id: dbStudent.id,
@@ -185,6 +186,7 @@ export async function POST(request: Request) {
                         day_of_week: day,
                         time_slot: time,
                         availability_status: status,
+                        scheduled_status: status,
                         date
                     });
                 }
@@ -192,7 +194,7 @@ export async function POST(request: Request) {
         }
 
         const { error: slotError } = await supabaseAdmin
-            .from('interim_availability_slots')
+            .from('interim_student_availability_slots')
             .insert(availabilitySlots);
 
         if (slotError) throw slotError;
@@ -228,7 +230,7 @@ export async function GET(request: Request) {
             .from('interim_students')
             .select(`
                 *,
-                interim_availability_slots (
+                interim_student_availability_slots (
                     day_of_week,
                     time_slot,
                     availability_status,

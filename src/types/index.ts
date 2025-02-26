@@ -34,10 +34,10 @@ export interface TermStudent {
   jobs: string
   seniority: number
   assigned_shifts: number
-  availability_slots: {
+  term_student_availability_slots: {
     time_slot: string
     day_of_week: string
-    availability_status: string
+    scheduled_status: string
   }[]
 }
 
@@ -48,11 +48,11 @@ export interface InterimStudent {
   jobs: string
   seniority: number
   assigned_shifts: number
-  interim_availability_slots: {
+  interim_student_availability_slots: {
     id: string
     date: string
     time_slot: string
-    availability_status: string
+    scheduled_status: string
   }[]
 }
 

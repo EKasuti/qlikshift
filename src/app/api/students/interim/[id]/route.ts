@@ -9,7 +9,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         // Fetch the students by month
         const { data: students, error } = await supabaseAdmin
             .from('interim_students')
-            .select('*, interim_availability_slots(*)')
+            .select('*, interim_student_availability_slots(*)')
             .eq('id', id)
             .single(); 
         if (error || !students) {

@@ -8,10 +8,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
         // Fetch the student by ID
         const { data: student, error } = await supabaseAdmin
-            .from('students')
-            .select('*, availability_slots(*)')
+            .from('term_students')
+            .select('*, term_student_availability_slots(*)')
             .eq('id', id)
-            .single(); // Gets a single student
+            .single();
 
         if (error || !student) {
             return new Response(JSON.stringify({ error: 'Student not found' }), { status: 404 });

@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import * as xlsx from 'xlsx';
 
+// ExcelRow names
 interface ExcelRow {
     'Preferred Name'?: string;
     'Email'?: string;
@@ -14,7 +15,8 @@ interface ExcelRow {
     [key: string]: string | number | undefined;
 }
 
-interface Student {
+// Term Student interface
+interface TermStudent {
     preferredName: string;
     email: string;
     jobs?: string;
@@ -29,11 +31,13 @@ interface Student {
     availability: Record<string, { status: string; day: string; time: string }>;
 }
 
-interface AvailabilitySlot {
-    student_id: string;
+// Term Availability slots
+interface TermAvailabilitySlot {
+    term_student_id: string;
     day_of_week: string;
     time_slot: string;
     availability_status: string;
+    scheduled_status: string
 }
 
 function convertExcelTime(timeStr: string): string {
@@ -43,10 +47,10 @@ function convertExcelTime(timeStr: string): string {
 
     let hours = parseInt(match[1]);
     const period = match[2];
-    
+
     if (period === 'pm' && hours !== 12) hours += 12;
     if (period === 'am' && hours === 12) hours = 0;
-    
+
     return `${hours.toString().padStart(2, '0')}:00`;
 }
 
@@ -68,14 +72,14 @@ function parseTimeSlotHeader(header: string): { day: string; time: string } {
 export async function POST(request: Request) {
     try {
         if (!supabaseAdmin) throw new Error('Database connection failed');
-        
+
         const formData = await request.formData();
         const file = formData.get('file') as File;
         const year = formData.get('year') as string;
         const termOrBreak = formData.get('term_or_break') as string;
 
         if (!file || !year || !termOrBreak) {
-            return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400});
+            return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
         }
 
         const buffer = await file.arrayBuffer();
@@ -83,12 +87,12 @@ export async function POST(request: Request) {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData: ExcelRow[] = xlsx.utils.sheet_to_json(sheet, { defval: undefined });
 
-        const timeSlotHeaders = Object.keys(jsonData[0]).filter(header => 
+        const timeSlotHeaders = Object.keys(jsonData[0]).filter(header =>
             header.match(/^\w+\s+\d+[ap]m-\d+[ap]m$/i)
         );
 
-        const students: Student[] = jsonData.map(row => {
-            const student: Student = {
+        const students: TermStudent[] = jsonData.map(row => {
+            const student: TermStudent = {
                 preferredName: row['Preferred Name']?.trim() || '',
                 email: row['Email']?.trim() || '',
                 jobs: row['Jobs']?.trim(),
@@ -120,15 +124,15 @@ export async function POST(request: Request) {
             });
 
             return student;
-        }).filter(student => 
-            student.email && 
-            student.preferredName && 
-            student.year && 
+        }).filter(student =>
+            student.email &&
+            student.preferredName &&
+            student.year &&
             student.termOrBreak
         );
 
         const { data: dbStudents, error: upsertError } = await supabaseAdmin
-            .from('students')
+            .from('term_students')
             .upsert(
                 students.map(s => ({
                     preferred_name: s.preferredName,
@@ -149,40 +153,39 @@ export async function POST(request: Request) {
 
         if (upsertError) throw upsertError;
 
-        const availabilitySlots: AvailabilitySlot[] = [];
-        
+        const availabilitySlots: TermAvailabilitySlot[] = [];
+
         for (const student of students) {
-            const dbStudent = dbStudents.find(s => 
-                s.email === student.email && 
-                s.year === student.year && 
+            const dbStudent = dbStudents.find(s =>
+                s.email === student.email &&
+                s.year === student.year &&
                 s.term_or_break === student.termOrBreak
             );
 
             if (!dbStudent) continue;
 
             await supabaseAdmin
-                .from('availability_slots')
+                .from('term_student_availability_slots')
                 .delete()
                 .match({
-                    student_id: dbStudent.id,
-                    year: student.year,
-                    term_or_break: student.termOrBreak
+                    term_student_id: dbStudent.id
                 });
 
             Object.entries(student.availability).forEach(([, { status, day, time }]) => {
                 if (day && time) {
                     availabilitySlots.push({
-                        student_id: dbStudent.id,
+                        term_student_id: dbStudent.id,
                         day_of_week: day,
-                        time_slot: time, 
+                        time_slot: time,
                         availability_status: status,
+                        scheduled_status: status
                     });
                 }
             });
         }
 
         const { error: slotError } = await supabaseAdmin
-            .from('availability_slots')
+            .from('term_student_availability_slots')
             .insert(availabilitySlots);
 
         if (slotError) throw slotError;
@@ -196,7 +199,8 @@ export async function POST(request: Request) {
         }), { status: 200 });
 
     } catch (error) {
-        return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error'}), { status: 500 });
+        console.error('Error:', error);
+        return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), { status: 500 });
     }
 }
 
@@ -204,14 +208,14 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
     try {
         if (!supabaseAdmin) throw new Error('Database connection failed');
-        
+
         const { searchParams } = new URL(request.url);
         const year = searchParams.get('year');
         const term = searchParams.get('term_or_break');
 
         let query = supabaseAdmin
-            .from('students')
-            .select(`*, availability_slots (day_of_week, time_slot, availability_status)`)
+            .from('term_students')
+            .select(`*, term_student_availability_slots (day_of_week, time_slot, availability_status, scheduled_status)`)
             .order('preferred_name', { ascending: true });
 
         if (year) query = query.eq('year', year);
@@ -222,7 +226,7 @@ export async function GET(request: Request) {
         if (error) throw error;
 
         if (!year && !term) {
-            const grouped = data.reduce((acc: Record<string, { year: string; term_or_break: string; students: Student[] }>, student) => {
+            const grouped = data.reduce((acc: Record<string, { year: string; term_or_break: string; students: TermStudent[] }>, student) => {
                 const key = `${student.year}_${student.term_or_break}`;
                 if (!acc[key]) {
                     acc[key] = {
@@ -235,16 +239,16 @@ export async function GET(request: Request) {
                 return acc;
             }, {});
 
-            return new Response(JSON.stringify(Object.values(grouped)), { 
+            return new Response(JSON.stringify(Object.values(grouped)), {
                 status: 200
             });
         }
 
-        return new Response(JSON.stringify(data), { 
+        return new Response(JSON.stringify(data), {
             status: 200
         });
 
     } catch (error) {
-        return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error'}), { status: 500 });
+        return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), { status: 500 });
     }
 }

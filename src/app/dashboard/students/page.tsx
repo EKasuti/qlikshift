@@ -4,12 +4,12 @@ import { StatCardData, StatsCards } from "@/components/dashboard/stats-cards";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { Users, UserCheck, Calendar, ChevronLeft, ChevronRight } from "lucide-react"
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Student } from "@/types";
 import { Card } from "@/components/ui/card";
-
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
 export default function StudentsPage() {
     const [selectedYear, setSelectedYear] = useState<number>(2025);
@@ -17,30 +17,37 @@ export default function StudentsPage() {
     const [students, setStudents] = useState<Student[]>([]); 
     const [loading, setLoading] = useState<boolean>(false); 
 
-    useEffect(() => {
-        const fetchStudents = async () => {
-            setLoading(true);
-            try {
-                const response = selectedTerm.endsWith("Break")
-                    ? await fetch(`/api/students/interim?year=${selectedYear}&term_or_break=${selectedTerm}`)
-                    : await fetch(`/api/students/term?year=${selectedYear}&term_or_break=${selectedTerm}`);
-                
-                const data = await response.json();
-                setStudents(data);
-            } catch (error) {
-                console.error('Error fetching students:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
+    // Dialog state
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [file, setFile] = useState<File | null>(null);
+    const [uploadLoading, setUploadLoading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
 
-        fetchStudents();
+    const fetchStudents = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = selectedTerm.endsWith("Break")
+                ? await fetch(`/api/students/interim?year=${selectedYear}&term_or_break=${selectedTerm}`)
+                : await fetch(`/api/students/term?year=${selectedYear}&term_or_break=${selectedTerm}`);
+            
+            const data = await response.json();
+            setStudents(data);
+        } catch (error) {
+            console.error('Error fetching students:', error);
+        } finally {
+            setLoading(false);
+        }
     }, [selectedYear, selectedTerm]);
+
+    useEffect(() => {
+        fetchStudents();
+    }, [fetchStudents]);
 
     // Calculate statistics
     const totalStudents = students.length;
     const averageHoursPerWeek = totalStudents > 0 
-        ? (students.reduce((sum, student) => sum + student.preferred_hours_per_week, 0) / totalStudents) 
+        ? parseFloat((students.reduce((sum, student) => sum + student.preferred_hours_per_week, 0) / totalStudents).toFixed(1)) 
         : 0;
     const assignedStudents = students.filter(student => student.assigned_shifts > 0).length;
 
@@ -50,6 +57,63 @@ export default function StudentsPage() {
         { title: "Unassigned Students", value: totalStudents - assignedStudents, icon: Users, color: "orange" },
         { title: "Assigned Students", value: assignedStudents, icon: UserCheck, color: "green" }
     ];
+
+    // Function to handle file change
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFile = event.target.files?.[0];
+        if (selectedFile) {
+            const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
+            if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+                setFile(selectedFile);
+                setUploadError(null); // Clear any previous error
+            } else {
+                setUploadError("Please upload a valid Excel file (.xlsx, .xls).");
+                setFile(null); // Clear the file if the type is invalid
+            }
+        }
+    };
+
+    // Function to handle upload
+    const handleUpload = async () => {
+        if (!file) return;
+
+        setUploadLoading(true);
+        setUploadError(null);
+        setUploadSuccess(null);
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("year", selectedYear.toString());
+        formData.append("term_or_break", selectedTerm);
+
+        const endpoint = selectedTerm.endsWith("Break")
+            ? `/api/students/interim`
+            : `/api/students/term`;
+
+        try {
+            const response = await fetch(endpoint, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to upload students");
+            }
+
+            const result = await response.json();
+            setUploadSuccess(result.message);
+            setFile(null);
+            setIsDialogOpen(false); 
+
+            fetchStudents()
+        } catch (err) {
+            setUploadError(err instanceof Error ? err.message : "Unknown error");
+            setFile(null);
+        } finally {
+            
+            setUploadLoading(false);
+        }
+    };
 
     return (
         <div className="flex flex-col gap-4">
@@ -118,10 +182,39 @@ export default function StudentsPage() {
                         </SelectContent>
                     </Select>
                 </div>
-                <Button variant="outline" className="text-primary border-primary">
-                    Add Students
+                <Button variant="outline" className="text-primary border-primary" onClick={() => setIsDialogOpen(true)}>
+                    Upload File
                 </Button>
             </div>
+
+            {/* Upload Students Dialog */}
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) {
+                    setFile(null); // Reset file when dialog is closed
+                }
+            }}>
+                <DialogContent className="bg-white">
+                    <DialogTitle>Add Students</DialogTitle>
+                    <DialogDescription>
+                        Upload a file for {selectedTerm} {selectedYear}
+                    </DialogDescription>
+                    <input type="file" accept=".xlsx, .xls" onChange={handleFileChange} />
+                    <Button 
+                        variant="default" 
+                        onClick={handleUpload} 
+                        disabled={uploadLoading || !file}
+                        className="text-white"
+                    >
+                        {uploadLoading ? "Uploading..." : "Upload Students"}
+                    </Button>
+                    {uploadError && <p className="text-red-500">{uploadError}</p>}
+                    {uploadSuccess && <p className="text-green-500">{uploadSuccess}</p>}
+                    <DialogClose asChild>
+                        <Button variant="outline">Close</Button>
+                    </DialogClose>
+                </DialogContent>
+            </Dialog>
 
             {/* Students table data */}
             {loading ? (
@@ -137,14 +230,14 @@ export default function StudentsPage() {
                             <thead className="bg-[#F5F5F5]">
                                 <tr>
                                     <th className="p-2 rounded-tl-lg bg-primary text-white">Id</th>
-                                    <th className="border-l p-2 text-start">Preferred Name</th>
+                                    <th className="border-l p-2 text-start">Name</th>
                                     <th className="border-l p-2 text-start">Email</th>
                                     <th className="border-l p-2 text-start">Jobs</th>
                                     <th className="border-l p-2 text-start">Preferred Desk</th>
-                                    <th className="border-l p-2 text-start">Hrs / Wk</th>
                                     <th className="border-l p-2 text-start">Seniority</th>
+                                    <th className="border-l p-2 text-start">Hrs / Wk</th>
                                     <th className="border-l p-2 text-start">Max shifts</th>
-                                    <th className="border-l p-2 text-start rounded-tr-lg">Assigned shifts</th>
+                                    <th className="border-l p-2 text-start rounded-tr-lg">Shifts</th>
                                 </tr>
                             </thead>
 
@@ -164,8 +257,8 @@ export default function StudentsPage() {
                                         <td className="border p-2 text-start">{student.email}</td>
                                         <td className="border p-2 text-start">{student.jobs}</td>
                                         <td className="border p-2 text-start">{student.preferred_desk}</td>
-                                        <td className="border p-2 text-start">{student.preferred_hours_per_week}</td>
                                         <td className="border p-2 text-start">{student.seniority}</td>
+                                        <td className="border p-2 text-start">{student.preferred_hours_per_week}</td>
                                         <td className="border p-2 text-start">{student.max_shifts}</td>
                                         <td className="border p-2 text-start">{student.assigned_shifts}</td>  
                                     </tr>
@@ -173,9 +266,7 @@ export default function StudentsPage() {
                             </tbody>
                         </table>
                     </div>
-
                 </Card>
-               
             ) : (
                 <p>Students not available.</p>
             )}

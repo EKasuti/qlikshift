@@ -78,16 +78,16 @@ export default function StudentDetailsPage() {
 
     // Function to get consolidated availability
     const getConsolidatedAvailability = () => {
-        if (!student || !('interim_availability_slots' in student)) return []
+        if (!student || !('interim_student_availability_slots' in student)) return []
         
-        const uniqueDates = [...new Set(student.interim_availability_slots.map(slot => slot.date))]
+        const uniqueDates = [...new Set(student.interim_student_availability_slots.map(slot => slot.date))]
         return uniqueDates.map(date => {
-            const slotsForDate = student.interim_availability_slots.filter(slot => slot.date === date)
+            const slotsForDate = student.interim_student_availability_slots.filter(slot => slot.date === date)
             return {
                 date,
                 slots: interimHours.map(hour => {
                     const matchingSlot = slotsForDate.find(slot => slot.time_slot === hour)
-                    return matchingSlot?.availability_status || null
+                    return matchingSlot?.scheduled_status || null
                 })
             }
         })
@@ -163,14 +163,14 @@ export default function StudentDetailsPage() {
 
                             {/* Table body */}
                             <tbody>
-                                {timeSlots.map((time) => (
-                                <tr key={time}>
+                                {timeSlots.map((time, index) => (
+                                <tr key={time} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                                     <td className="border px-4 py-2 font-semibold">{time}</td>
                                         {days.map((day) => {
-                                            const availability = (student as TermStudent).availability_slots?.find(slot => slot.day_of_week === day && slot.time_slot === time)
+                                            const availability = (student as TermStudent).term_student_availability_slots?.find(slot => slot.day_of_week === day && slot.time_slot === time)
                                             return (
                                                 <td key={`${day}-${time}`} className="border px-4 py-2 text-center">
-                                                    {availability ? <span>{availability.availability_status}</span> : null}
+                                                    {availability ? <span>{availability.scheduled_status}</span> : "Not found"}
                                                 </td>
                                             )
                                         }
@@ -196,13 +196,13 @@ export default function StudentDetailsPage() {
 
                             {/* Table Body */}
                             <tbody>
-                                {getConsolidatedAvailability().map(({date, slots}) => (
-                                    <tr key={date}>
-                                        <td className="border px-4 py-2 font-semibold text-center">{formatDate(date)}</td>
-                                        {slots.map((status, index) => {
+                                {getConsolidatedAvailability().map((availability, index) => (
+                                    <tr key={availability.date} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                                        <td className="border px-4 py-2 font-semibold text-center">{formatDate(availability.date)}</td>
+                                        {availability.slots.map((status, index) => {
                                             const colorClass = status ? deskColors[status.toLowerCase()] : "";
                                             return (
-                                                <td key={`${date}-${index}`} className={`border px-4 py-2 text-center ${colorClass}`}>
+                                                <td key={`${availability.date}-${index}`} className={`border px-4 py-2 text-center ${colorClass}`}>
                                                     {status}
                                                 </td>
                                             );
