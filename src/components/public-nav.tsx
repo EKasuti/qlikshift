@@ -28,9 +28,9 @@ export function PublicNav() {
                     </Link>
                 </div>
 
-                <Link href="/login">
+                <Link href="/dashboard">
                     <Button className="bg-primary text-white rounded-[20px]">
-                        Try for Free
+                        Get Started
                     </Button>
                 </Link>
             </div>

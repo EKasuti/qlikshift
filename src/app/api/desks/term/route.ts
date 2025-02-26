@@ -122,7 +122,7 @@ export async function GET(request: Request) {
 
         const { searchParams } = new URL(request.url);
         const year = searchParams.get('year');
-        const term = searchParams.get('term');
+        const term = searchParams.get('term_or_break');
         const desk = searchParams.get('desk');
 
         let query = supabaseAdmin

@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
 import { StatsCards, type StatCardData } from "@/components/dashboard/stats-cards"
-import { AvailableStudent, Interim_Desk, InterimShift, TermDesk } from "@/types"
+import { AvailableStudent, Interim_Desk, InterimShift, TermDesk, TermShift } from "@/types"
 import { Card } from "@/components/ui/card"
 
 const interim_timeSlots = [
@@ -65,16 +65,16 @@ const Modal = ({ isOpen, onClose, title, date, status, availableStudents }: { is
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
             <div className="bg-white p-4 rounded shadow-lg mb-2">
                 <h2 className="text-lg font-bold">{title}</h2>
-                <p className="text-start">Date: {date}</p>
+                <p className="text-start">{date}</p> {/* Display day or date */}
                 <p className="text-start">Current Status: {status}</p>
 
                 <h2 className="text-md font-bold">Available Students</h2>
 
                 <h2 className="text-md font-bold text-start">First Choice</h2>
-                <ul className="mb-2">
+                <ul className="mb-2 text-start">
                     {availableStudents.filter(student => student.availability_status === '1st Choice').length > 0 ? (
                         availableStudents.filter(student => student.availability_status === '1st Choice').map(student => (
-                        <li key={student.student_id} className="text-start">
+                        <li key={`${student.student_id}-1st Choice`}>
                             {student.preferred_name} - {student.email}
                         </li>
                         ))
@@ -87,7 +87,7 @@ const Modal = ({ isOpen, onClose, title, date, status, availableStudents }: { is
                 <ul className="text-start">
                     {availableStudents.filter(student => student.availability_status === '2nd Choice').length > 0 ? (
                         availableStudents.filter(student => student.availability_status === '2nd Choice').map(student => (
-                        <li key={student.student_id}>
+                        <li key={`${student.student_id}-2nd Choice`}>
                             {student.preferred_name} - {student.email}
                         </li>
                         ))
@@ -101,7 +101,6 @@ const Modal = ({ isOpen, onClose, title, date, status, availableStudents }: { is
     );
 };
 
-
 function ScheduleTable({ desk, isBreakTerm, selectedDesk, selectedTerm, selectedYear }: { desk: TermDesk | Interim_Desk, isBreakTerm: boolean, selectedDesk: string, selectedTerm: string, selectedYear: number }) {
     const timeSlots = generateTimeSlots(desk.opening_time, desk.closing_time);
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -111,81 +110,111 @@ function ScheduleTable({ desk, isBreakTerm, selectedDesk, selectedTerm, selected
     const [modalDetails, setModalDetails] = useState<{ title: string; date: string; status: string; term: string; year: number } | null>(null);
     const [availableStudents, setAvailableStudents] = useState<AvailableStudent[]>([]);
 
-    const handleSlotClick = async (shift: InterimShift | undefined, date: string) => {
+    const handleSlotClick = async (shift: InterimShift | TermShift | undefined, dateOrDay: string, isTerm: boolean) => {
         if (shift) {
-        const response = await fetch(`/api/desks/interim/availableStudents?shiftId=${shift.id}`);
-        const data = await response.json();
-
-        setModalDetails({
-            title: `${selectedDesk.toUpperCase()} Shift Details`,
-            date: formatDate(date),
-            status: shift.students_detailed.length > 0 
-            ? `(${shift.students_detailed.join(', ')})` 
-            : 'Closed',
-            term: selectedTerm,
-            year: selectedYear
-        });
-        setIsModalOpen(true);
-        setAvailableStudents([...data.firstChoice, ...data.secondChoice]);
+            try {
+                // Determine the API endpoint based on whether the term is a "Break" term
+                const endpoint = selectedTerm.endsWith("Break")
+                    ? `/api/desks/interim/availableStudents?shiftId=${shift.id}&termOrBreak=${selectedTerm}&desk=${selectedDesk}`
+                    : `/api/desks/term/availableStudents?shiftId=${shift.id}&termOrBreak=${selectedTerm}&desk=${selectedDesk}`;
+    
+                const response = await fetch(endpoint);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch available students');
+                }
+    
+                const data = await response.json();
+    
+                // Ensure the response has the expected structure
+                if (!data.firstChoice || !data.secondChoice) {
+                    throw new Error('Invalid response structure');
+                }
+    
+                setModalDetails({
+                    title: `${selectedDesk.toUpperCase()} Shift Details`,
+                    date: isTerm ? `Day: ${dateOrDay}` : `Date: ${formatDate(dateOrDay)}`, // Pass day if Term, else date
+                    status: shift.students_detailed.length > 0 
+                        ? `(${shift.students_detailed.join(', ')})` 
+                        : 'Closed',
+                    term: selectedTerm,
+                    year: selectedYear
+                });
+    
+                setIsModalOpen(true);
+    
+                // Combine firstChoice and secondChoice arrays
+                const combinedStudents = [...data.firstChoice, ...data.secondChoice];
+                setAvailableStudents(combinedStudents);
+            } catch (error) {
+                console.error('Error fetching available students:', error);
+                // Optionally, show an error message to the user
+            }
         }
     };
-
     return (
         <div className="overflow-x-auto rounded-lg">
             <Card className="p-6">
             <p className="text-center mb-2 font-bold text-lg"> {selectedDesk.toUpperCase()} desk calendar for {selectedTerm} {selectedYear} </p>
                 {isBreakTerm ? (
+                    // Interim Desk Table
                     <table className="w-full border-collapse">
                         {/* Table Head */}
                         <thead>
                             <tr>
                                 <th className="p-2 bg-primary text-white rounded-tl-lg">Date/ Time</th>
                                 {interim_timeSlots.map((timeslot, index) => (
-                                    <th key={timeslot} className={`border-l px-2 py-2 font-semibold bg-[#F5F5F5] ${index === interim_timeSlots.length - 1 ? ' rounded-tr-lg' : ''}`}>{timeslot}</th>
+                                    <th key={timeslot} className={`border-r border-t px-2 py-2 font-semibold bg-[#F5F5F5] ${index === interim_timeSlots.length - 1 ? ' rounded-tr-lg' : ''}`}>{timeslot}</th>
                                 ))}
                             </tr>
                         </thead>
 
                         {/* Table Body */}
                         <tbody>
-                            {(desk as Interim_Desk).interim_slots.map(slot => (
-                                <tr key={slot.id}>
-                                    <td className="border p-2 font-bold">{formatDate(slot.date)}</td>
-                                    {interim_timeSlots.map(timeslot => {
-                                    const shift = slot.interim_shifts.find(shift => 
-                                        `${shift.start_time} - ${shift.end_time}` === timeslot
-                                    );
-                                    return (
-                                        <td 
-                                            key={timeslot} 
-                                            className="border p-2 cursor-pointer" 
-                                            onClick={() => handleSlotClick(shift, slot.date)}
-                                        >
-                                            {shift ? shift.students_detailed.join(', ') : 'Closed'}
-                                        </td>
-                                    );
-                                    })}
+                            {desk && (desk as Interim_Desk).interim_slots ? (
+                                (desk as Interim_Desk).interim_slots.map((slot, index) => (
+                                    <tr key={slot.id} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                                        <td className="border p-2 font-bold">{formatDate(slot.date)}</td>
+                                        {interim_timeSlots.map(timeslot => {
+                                            const shift = slot.interim_shifts.find(shift => 
+                                                `${shift.start_time} - ${shift.end_time}` === timeslot
+                                            );
+                                            return (
+                                                <td 
+                                                    key={timeslot} 
+                                                    className="border p-2 cursor-pointer" 
+                                                    onClick={() => handleSlotClick(shift, slot.date, false)}
+                                                >
+                                                    {shift ? shift.students_detailed.join(', ') : 'Closed'}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={interim_timeSlots.length + 1} className="text-center">No interim slots available.</td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
                 ) : (
+                    // Term Desk Table
                     <table className="w-full border-collapse">
                         {/* Table head */}
                         <thead>
                             <tr>
                                 <th className="p-2 bg-primary text-white rounded-tl-lg">Time/ Day</th>
                                     {days.map((day, index) => (
-                                    <th key={day} className={`border-l px-2 py-2 font-semibold bg-[#F5F5F5] ${index === days.length - 1 ? ' rounded-tr-lg' : ''}`}>{day}</th>
+                                    <th key={day} className={`border-r border-t px-2 py-2 font-semibold bg-[#F5F5F5] ${index === days.length-1 ? 'rounded-tr-lg border' : ''}`}>{day}</th>
                                 ))}
                             </tr>
                         </thead>
 
                         {/* Table Body */}
                         <tbody>
-                        {timeSlots.map(timeSlot => (
-                            <tr key={timeSlot}>
-                                <td className="border p-2 bg-[#f5f5f5]">{timeSlot}</td>
+                        {timeSlots.map((timeSlot, index) => (
+                            <tr key={timeSlot} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                                <td className="border p-2">{timeSlot}</td>
                                 {days.map(day => {
                                     const termSlot = 'term_slots' in desk 
                                         ? desk.term_slots.find(slot => slot.day_of_week.toLowerCase() === day.toLowerCase()) 
@@ -196,7 +225,11 @@ function ScheduleTable({ desk, isBreakTerm, selectedDesk, selectedTerm, selected
                                         );
                                     
                                     return (
-                                    <td key={day} className="border p-2 text-center">
+                                    <td 
+                                        key={day} 
+                                        className="border p-2 text-center"
+                                        onClick={() => handleSlotClick(shift, day, true)}
+                                    >
                                         {termSlot?.is_open && shift ? (shift.students_detailed.join(', ')) : ( 'Closed' )}
                                     </td>
                                     );
@@ -331,7 +364,7 @@ export default function DesksPage() {
 
                 {/* Button to Add desk */}
                 <Button variant="outline" className="text-primary border-primary">
-                    Add Desk
+                    Create Desk
                 </Button>
             </div>
 
