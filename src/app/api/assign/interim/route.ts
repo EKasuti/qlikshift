@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
+// Shift Interface
 interface Shift {
     id: string;
     max_students?: number;
@@ -9,6 +10,7 @@ interface Shift {
     end_time?: string;
 }
 
+// Student availability Interface
 interface StudentAvailability {
     id: string;
     student_id: string;
@@ -19,6 +21,7 @@ interface StudentAvailability {
     created_at: string;
 }
 
+// Function to update shift details
 async function updateShiftDetails(shiftId: string, updatedStudents: string[]): Promise<boolean> {
     console.log('DEBUG: Updating shift details in DB for shiftId:', shiftId);
     console.log('DEBUG: Updated students:', updatedStudents);
@@ -35,17 +38,20 @@ async function updateShiftDetails(shiftId: string, updatedStudents: string[]): P
     return true;
 }
 
+// Function to check if student is eligible for desk
 function isEligibleForDesk(studentJobs: string[], deskName: string): boolean {
     return studentJobs
         .map(job => job.trim().toLowerCase())
         .includes(deskName.toLowerCase());
 }
 
+// Function to check if a shift slot has space
 function hasAvailableSpace(shift: Shift, currentAssignments: string[]): boolean {
     const maxStudents = shift.max_students || 1;
     return currentAssignments.length < maxStudents;
 }
 
+// Function to check if it's consecutive
 function isConsecutive(existing: Shift, candidate: Shift): boolean {
     return existing.end_time === candidate.start_time || candidate.end_time === existing.start_time;
 }
@@ -104,7 +110,7 @@ export async function POST(request: Request) {
         // 5) Fetch availability for all relevant dates
         const availabilityPromises = Array.from(dates).map(date =>
             supabaseAdmin!
-                .from('interim_availability_slots')
+                .from('interim_student_availability_slots')
                 .select('*')
                 .eq('date', date)
         );
@@ -211,15 +217,14 @@ export async function POST(request: Request) {
 
                         // Update availability status to desk name
                         await supabaseAdmin!
-                            .from('interim_availability_slots')
-                            .update({ availability_status: desk_name })
+                            .from('interim_student_availability_slots')
+                            .update({ scheduled_status: desk_name })
                             .eq('student_id', student.id)
                             .eq('date', slot.date)
                             .eq('time_slot', shiftTimeSlot);
                     }
                 }
             }
-
             if (assignedSoFar === 0) {
                 logSummary.push(`No assignment made for ${student.preferred_name}`);
             }
@@ -229,7 +234,7 @@ export async function POST(request: Request) {
 
         // Save summary
         const { error: summaryError } = await supabaseAdmin!
-            .from('interim_temp_assignments')
+            .from('student_assignments')
             .insert([{
                 year,
                 term_or_break,
@@ -252,7 +257,6 @@ export async function POST(request: Request) {
     }
 }
 
-
 export async function GET(request: Request) {
     try {
         if (!supabaseAdmin) throw new Error('Could not connect to database');
@@ -263,7 +267,7 @@ export async function GET(request: Request) {
         const desk = searchParams.get('desk');
 
         let query = supabaseAdmin
-            .from('interim_temp_assignments')
+            .from('student_assignments')
             .select('*')
             .order('created_at', { ascending: false });
 

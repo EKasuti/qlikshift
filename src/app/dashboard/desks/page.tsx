@@ -280,10 +280,10 @@ export default function DesksPage() {
     }, [selectedYear, selectedTerm, selectedDesk, isInterim])
 
     const statsData: StatCardData[] = [
-        { title: "Available Shifts", value: 0, icon: Calendar, color: "purple" },
-        { title: "Assigned Shifts", value: 0, icon: UserCheck, color: "blue" },
-        { title: "Staff", value: 0, icon: Users, color: "orange" },
-        { title: "Students", value: 0, icon: GraduationCap, color: "green" }
+        { title: "Total Shifts", value: 0, icon: Calendar, color: "purple" },
+        { title: "Available Shifts", value: 0, icon: UserCheck, color: "blue" },
+        { title: "Assigned Shifts", value: 0, icon: Users, color: "orange" },
+        { title: "Assigned Students", value: 0, icon: GraduationCap, color: "green" }
     ]
   
     return (

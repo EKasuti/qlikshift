@@ -100,7 +100,7 @@ export default function StudentDetailsPage() {
         <div className="mx-auto space-y-6">
             {/* Button to return to all students */}
             <div>
-                <Button className="bg-white hover:text-white hover:bg-primary" onClick={() => window.history.back()}>
+                <Button className="bg-white text-black hover:text-white hover:bg-primary" onClick={() => window.history.back()}>
                     Back to All Students
                 </Button>
             </div>
