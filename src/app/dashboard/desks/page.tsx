@@ -413,7 +413,7 @@ export default function DesksPage() {
                         <p>
                         {selectedDesk.toUpperCase()} desk is not available for <span className="font-bold">{selectedTerm} {selectedYear}</span>.
                         </p>
-                        <p>Create the desk by clicking &quot;Add Desk&quot; button</p>
+                        <p>Create the desk by clicking &quot;Create Desk&quot; button</p>
                     </>
                 )}
             </div>
