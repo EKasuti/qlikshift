@@ -171,7 +171,9 @@ function ScheduleTable({ desk, isBreakTerm, selectedDesk, selectedTerm, selected
                         {/* Table Body */}
                         <tbody>
                             {desk && (desk as Interim_Desk).interim_slots ? (
-                                (desk as Interim_Desk).interim_slots.map((slot, index) => (
+                                (desk as Interim_Desk).interim_slots
+                                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) // Sort interim slots by date
+                                    .map((slot, index) => (
                                     <tr key={slot.id} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                                         <td className="border p-2 font-bold">{formatDate(slot.date)}</td>
                                         {interim_timeSlots.map(timeslot => {

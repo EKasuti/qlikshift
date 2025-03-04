@@ -112,7 +112,6 @@ export async function GET(request: Request) {
         let query = supabaseAdmin
         .from('interim_desks')
         .select(`*, interim_slots:interim_slots (*, interim_shifts:interim_shifts (*))`)
-        .order('created_at', { ascending: false });
 
         // Apply filters if provided
         if (year) {
