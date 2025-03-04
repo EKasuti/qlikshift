@@ -3,7 +3,7 @@
 import { StatCardData, StatsCards } from "@/components/dashboard/stats-cards";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
-import { Users, UserCheck, Calendar, ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from "lucide-react";
+import { Users, UserCheck, Calendar, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,6 +25,9 @@ export default function StudentsPage() {
     const [uploadLoading, setUploadLoading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+
+    // New state for filter
+    const [filter, setFilter] = useState<'all' | 'sub' | 'working' | 'notWorking'>('all');
 
     const fetchStudents = useCallback(async () => {
         setLoading(true);
@@ -74,6 +77,14 @@ export default function StudentsPage() {
         { title: "Unassigned Students", value: totalStudents - assignedStudents, icon: Users, color: "orange" },
         { title: "Assigned Students", value: assignedStudents, icon: UserCheck, color: "green" }
     ];
+
+    // Function to filter students based on selected filter
+    const filteredStudents = students.filter(student => {
+        if (filter === 'sub') return student.issub && student.isworking;
+        if (filter === 'working') return student.isworking && !student.issub;
+        if (filter === 'notWorking') return !student.isworking;
+        return true; // 'all' case
+    });
 
     // Function to handle file change
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -167,6 +178,8 @@ export default function StudentsPage() {
                     {/* Year */}
                     <Button variant="outline">{selectedYear}</Button>
 
+                    
+
                     {/* Button to Decrement Year */}
                     <Button 
                         variant="default" 
@@ -201,6 +214,22 @@ export default function StudentsPage() {
                             <SelectItem value="Summer Break">Summer Break</SelectItem>
                             <SelectItem value="Summer Term">Summer Term</SelectItem>
                             <SelectItem value="Fall Break">Fall Break</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    
+                    {/* Filter Icon */}
+                    <Button variant="outline" onClick={() => setFilter('all')}>
+                        <Filter />
+                    </Button>
+                    <Select defaultValue={filter} onValueChange={(value: 'all' | 'sub' | 'working' | 'notWorking') => setFilter(value)}>
+                        <SelectTrigger className="w-[180px] bg-white">
+                            <SelectValue placeholder="Select filter" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                            <SelectItem value="all">All</SelectItem>
+                            <SelectItem value="sub">Sub</SelectItem>
+                            <SelectItem value="working">Working</SelectItem>
+                            <SelectItem value="notWorking">Not Working</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -241,7 +270,7 @@ export default function StudentsPage() {
             {/* Students table data */}
             {loading ? (
                 <p>Loading students...</p>
-            ) : students.length > 0 ? (
+            ) : filteredStudents.length > 0 ? (
                 <Card className="p-6">
                     <div className="overflow-x-auto">
                         {/* Table Title */}
@@ -273,7 +302,7 @@ export default function StudentsPage() {
 
                             {/* Table Body */}
                             <tbody>
-                                {students.map((student, index) => (
+                                {filteredStudents.map((student, index) => (
                                     <tr key={student.id} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                                         <td className="border p-2">{index + 1}</td>
                                         <td className="border p-2 text-start">
