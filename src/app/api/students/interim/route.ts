@@ -4,6 +4,7 @@ import * as xlsx from 'xlsx';
 interface ExcelRow {
     'Preferred Name'?: string;
     'Email'?: string;
+    'Working'?: string;
     'Jobs'?: string;
     'Preferred Desk'?: string;
     'Preferred Hours Per Week'?: number;
@@ -18,6 +19,8 @@ interface InterimStudent {
     preferredName: string;
     email: string;
     jobs?: string;
+    isWorking: boolean;
+    isSub: boolean;
     preferredDesk: string;
     preferredHoursPerWeek: number;
     preferredHoursInARow: number;
@@ -48,92 +51,181 @@ function formatDate(dateString: string): string {
     return date.toISOString().split('T')[0];
 }
 
-function parseTimeSlotHeader(header: string): { day: string; time: string; date: string } {
-    const match = header.match(/^(\w+),\s+(\w+\s+\d+)\s+(\d{4}),\s+(\d+)([ap]m)-(\d+)([ap]m)$/i);
-    if (!match) throw new Error(`Invalid time slot header: ${header}`);
+function isTimeSlotHeader(header: string): boolean {
+    // Normalize the header by replacing line breaks and standardizing spaces
+    const normalizedHeader = header.replace(/\r\n/g, ' ').replace(/\s+/g, ' ').trim();
 
-    const day = match[1];
-    const dateString = `${match[2]} ${match[3]}`;
-    const startTime = match[4];
-    const startPeriod = match[5];
-    const endTime = match[6];
-    const endPeriod = match[7];
+    // General pattern: Day Followed by Date, Followed by Time Range
+    const dayPattern = /^(mon|tue|wed|thu|fri|sat|sun)/i;
+    const datePattern = /\d+\/\d+/;
+    
+    // Updated time pattern to catch "12noon" format
+    const timePattern = /\d+\s*(?:am|pm|noon)[-–—]\s*\d+\s*(?:am|pm|noon)/i;
+    const noonTimePattern = /\d+noon[-–—]\s*\d+\s*(?:am|pm)/i;
+
+    return dayPattern.test(normalizedHeader) &&
+        datePattern.test(normalizedHeader) &&
+        (timePattern.test(normalizedHeader) || noonTimePattern.test(normalizedHeader));
+}
+
+function parseTimeSlotHeader(header: string): { day: string; time: string; date: string } {
+    // Normalize the header
+    const normalizedHeader = header.replace(/\r\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // Extract day of week
+    const dayMatch = normalizedHeader.match(/^(mon|tue|wed|thu|fri|sat|sun)/i);
+    if (!dayMatch) throw new Error(`Could not extract day from header: ${normalizedHeader}`);
+    const day = dayMatch[0].charAt(0).toUpperCase() + dayMatch[0].slice(1).toLowerCase();
+
+    // Extract date
+    const dateMatch = normalizedHeader.match(/(\d+\/\d+)/);
+    if (!dateMatch) throw new Error(`Could not extract date from header: ${normalizedHeader}`);
+    const dateString = dateMatch[1]; // Format: MM/DD
+
+    // Handle the case when "noon" is attached to a number (e.g., "12noon")
+    let modifiedHeader = normalizedHeader;
+    if (modifiedHeader.includes('noon')) {
+        modifiedHeader = modifiedHeader.replace(/(\d+)noon/i, '$1 noon');
+    }
+
+    // Extract time range with more flexible pattern
+    const timeRangeMatch = 
+        modifiedHeader.match(/(\d+)\s*([ap]m|noon)-\s*(\d+)\s*([ap]m|noon)/i) || 
+        modifiedHeader.match(/(\d+)\s*noon\s*-\s*(\d+)\s*([ap]m)/i);
+
+    if (!timeRangeMatch) throw new Error(`Could not extract time range from header: ${modifiedHeader}`);
+
+    let startTime, startPeriod, endTime, endPeriod;
+
+    // Handle different match patterns
+    if (timeRangeMatch[2] && (timeRangeMatch[2].toLowerCase() === 'am' || 
+                              timeRangeMatch[2].toLowerCase() === 'pm' || 
+                              timeRangeMatch[2].toLowerCase() === 'noon')) {
+        // First pattern matched: normal time range
+        startTime = timeRangeMatch[1];
+        startPeriod = timeRangeMatch[2].toLowerCase();
+        endTime = timeRangeMatch[3];
+        endPeriod = timeRangeMatch[4].toLowerCase();
+    } else {
+        // Second pattern matched: "12noon - 2pm" format
+        startTime = timeRangeMatch[1];
+        startPeriod = 'noon';
+        endTime = timeRangeMatch[2];
+        endPeriod = timeRangeMatch[3].toLowerCase();
+    }
+
+    // Handle "noon" special case
+    if (startPeriod === 'noon') startPeriod = 'pm';
+    if (endPeriod === 'noon') endPeriod = 'pm';
 
     // Convert to 24-hour format
     const startHour = (startPeriod === 'pm' && startTime !== '12') ? parseInt(startTime) + 12 : (startPeriod === 'am' && startTime === '12' ? 0 : parseInt(startTime));
     const endHour = (endPeriod === 'pm' && endTime !== '12') ? parseInt(endTime) + 12 : (endPeriod === 'am' && endTime === '12' ? 0 : parseInt(endTime));
 
     // Format the date correctly
-    const formattedDate = formatDate(dateString);
+    const currentYear = new Date().getFullYear();
+    const formattedDate = formatDate(`${currentYear}-${dateString}`);
 
     return {
         day,
         time: `${String(startHour).padStart(2, '0')}:00:00 - ${String(endHour).padStart(2, '0')}:00:00`, // Format as HH:mm:ss
-        date: formattedDate // Return the formatted date
+        date: formattedDate
     };
 }
 
 // POST function to store Interim Students from excel sheet
 export async function POST(request: Request) {
     try {
+        console.log('Starting POST request to upload interim students...');
+
         if (!supabaseAdmin) throw new Error('Database connection failed');
-        
+        console.log('Database connection established.');
+
         const formData = await request.formData();
         const file = formData.get('file') as File;
         const year = formData.get('year') as string;
         const termOrBreak = formData.get('term_or_break') as string;
 
         if (!file || !year || !termOrBreak) {
+            console.error('Missing required fields:', { file, year, termOrBreak });
             return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
         }
+        console.log('File and parameters received:', { fileName: file.name, year, termOrBreak });
 
         const buffer = await file.arrayBuffer();
         const workbook = xlsx.read(new Uint8Array(buffer), { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData: ExcelRow[] = xlsx.utils.sheet_to_json(sheet, { defval: undefined });
+        console.log('Excel data parsed, first row keys:', Object.keys(jsonData[0]));
 
-        const timeSlotHeaders = Object.keys(jsonData[0]).filter(header => 
-            header.match(/^\w+,\s+\w+\s+\d+\s+\d{4},\s+\d+[ap]m-\d+[ap]m$/i)
-        );
+        // Filter for time slot headers using our more robust method
+        const timeSlotHeaders = Object.keys(jsonData[0]).filter(isTimeSlotHeader);
+        console.log('Time slot headers found:', timeSlotHeaders);
+
+        if (timeSlotHeaders.length === 0) {
+            console.error('No time slot headers found. Sample headers:', Object.keys(jsonData[0]).slice(0, 10));
+            return new Response(JSON.stringify({
+                error: 'No time slot headers detected in the Excel file'
+            }), { status: 400 });
+        }
 
         const students: InterimStudent[] = jsonData.map(row => {
             const student: InterimStudent = {
-                preferredName: row['Preferred Name']?.trim() || '',
-                email: row['Email']?.trim() || '',
-                jobs: row['Jobs']?.trim(),
-                preferredDesk: row['Preferred Desk']?.trim() || '',
+                preferredName: row['Preferred Name']?.toString().trim() || '',
+                email: row['Email']?.toString().trim() || '',
+                jobs: row['Jobs']?.toString().trim(),
+                preferredDesk: row['Preferred Desk']?.toString().trim() || '',
                 preferredHoursPerWeek: Number(row['Preferred Hours Per Week'] || 0),
                 preferredHoursInARow: Number(row['Preferred Hours In A Row'] || 0),
                 seniority: Number(row['Seniority']) || 0,
                 assignedShifts: 0,
-                maxShifts: Math.max(10, Number(row['Preferred Hours Per Week'] || 0)),
+                maxShifts: Math.max(10, Math.floor(Number(row['Preferred Hours Per Week'] || 0) / 2)),
                 year: year.trim(),
                 termOrBreak: termOrBreak.trim(),
-                availability: {}
+                availability: {},
+                isWorking: false,
+                isSub: false
             };
+
+            // Set isWorking and isSub based on the 'Working' field
+            const workingStatus = row['Working']?.toString().trim();
+            if (workingStatus === "Working (scheduled shifts)") {
+                student.isWorking = true;
+                student.isSub = false;
+            } else if (workingStatus === "Working (sub)") {
+                student.isWorking = true;
+                student.isSub = true;
+            } else if (workingStatus === "Not working") {
+                student.isWorking = false;
+                student.isSub = false;
+            }
 
             timeSlotHeaders.forEach(header => {
                 try {
                     const { time, day, date } = parseTimeSlotHeader(header);
                     const value = row[header];
 
+                    const availabilityStatus = typeof value === 'string'
+                        ? value.trim()
+                        : (student.isSub ? 'Sub' : (student.isWorking ? 'Unavailable' : 'Not Available'));
+
                     const key = `${time}-${day}-${date}`;
                     student.availability[key] = {
-                        status: typeof value === 'string' ? value.trim() : 'Unavailable',
+                        status: availabilityStatus,
                         day,
                         time,
                         date
                     };
                 } catch (error) {
-                    console.warn(`Skipping invalid column: ${header}`, error);
+                    console.warn(`Error processing column: ${header}`, error);
                 }
             });
 
             return student;
-        }).filter(student => 
-            student.email && 
-            student.preferredName && 
-            student.year && 
+        }).filter(student =>
+            student.email &&
+            student.preferredName &&
+            student.year &&
             student.termOrBreak
         );
 
@@ -151,27 +243,35 @@ export async function POST(request: Request) {
                     assigned_shifts: s.assignedShifts,
                     max_shifts: s.maxShifts,
                     year: s.year,
-                    term_or_break: s.termOrBreak
+                    term_or_break: s.termOrBreak,
+                    isworking: s.isWorking,
+                    issub: s.isSub
                 })),
                 { onConflict: 'email, year, term_or_break' }
             )
-            .select('id, email, year, term_or_break');
+            .select('id, email, year, term_or_break, isworking, issub');
 
-        if (upsertError) throw upsertError;
+        if (upsertError) {
+            console.error('Error upserting students:', upsertError);
+            throw upsertError;
+        }
 
         const availabilitySlots: InterimAvailabilitySlot[] = [];
-        
+
         for (const student of students) {
-            const dbStudent = dbStudents.find(s => 
-                s.email === student.email && 
-                s.year === student.year && 
+            const dbStudent = dbStudents.find(s =>
+                s.email === student.email &&
+                s.year === student.year &&
                 s.term_or_break === student.termOrBreak
             );
 
-            if (!dbStudent) continue;
+            if (!dbStudent) {
+                console.warn('No matching database student found for:', student);
+                continue;
+            }
 
             await supabaseAdmin
-                .from('interim_students_availability_slots')
+                .from('interim_student_availability_slots')
                 .delete()
                 .match({
                     student_id: dbStudent.id,
@@ -180,6 +280,7 @@ export async function POST(request: Request) {
                 });
 
             Object.entries(student.availability).forEach(([, { status, day, time, date }]) => {
+                console.log(`Processing availability: ${day}, ${time}, ${date}, Status: ${status}`);
                 if (day && time) {
                     availabilitySlots.push({
                         student_id: dbStudent.id,
@@ -193,11 +294,17 @@ export async function POST(request: Request) {
             });
         }
 
+        // Log the prepared availability slots
+        console.log('Prepared availability slots:', availabilitySlots);
+
         const { error: slotError } = await supabaseAdmin
             .from('interim_student_availability_slots')
             .insert(availabilitySlots);
 
-        if (slotError) throw slotError;
+        if (slotError) {
+            console.error('Error inserting availability slots:', slotError);
+            throw slotError;
+        }
 
         return new Response(JSON.stringify({
             message: 'Import successful for interim students',
@@ -209,13 +316,13 @@ export async function POST(request: Request) {
 
     } catch (error) {
         console.error('Import error:', error);
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
             error: error instanceof Error ? error.message : 'Unknown error'
         }), { status: 500 });
     }
 }
 
-// GET function to retrieve Interim Students
+// GET function remains the same
 export async function GET(request: Request) {
     try {
         console.log('Starting GET request for interim students...');
@@ -225,7 +332,7 @@ export async function GET(request: Request) {
         const term = searchParams.get('term_or_break');
 
         if (!supabaseAdmin) throw new Error('Database connection failed');
-        
+
         let query = supabaseAdmin
             .from('interim_students')
             .select(`
@@ -237,7 +344,7 @@ export async function GET(request: Request) {
                     date
                 )
             `)
-            .order('preferred_name', { ascending: true });
+            .order('seniority', { ascending: false });
 
         if (year) query = query.eq('year', year);
         if (term) query = query.eq('term_or_break', term);
@@ -250,7 +357,7 @@ export async function GET(request: Request) {
 
     } catch (error) {
         console.error('Retrieval error:', error);
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
             error: error instanceof Error ? error.message : 'Unknown error'
         }), { status: 500 });
     }

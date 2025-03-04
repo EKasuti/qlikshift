@@ -3,7 +3,7 @@
 import { StatCardData, StatsCards } from "@/components/dashboard/stats-cards";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
-import { Users, UserCheck, Calendar, ChevronLeft, ChevronRight } from "lucide-react"
+import { Users, UserCheck, Calendar, ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +16,8 @@ export default function StudentsPage() {
     const [selectedTerm, setSelectedTerm] = useState<string>("Spring Break");
     const [students, setStudents] = useState<Student[]>([]); 
     const [loading, setLoading] = useState<boolean>(false); 
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [sortField, setSortField] = useState<string>('seniority');
 
     // Dialog state
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -32,13 +34,28 @@ export default function StudentsPage() {
                 : await fetch(`/api/students/term?year=${selectedYear}&term_or_break=${selectedTerm}`);
             
             const data = await response.json();
-            setStudents(data);
+
+            // Sort students based on selected field and order
+            const sortedStudents = data.sort((a: Student, b: Student) => {
+                const aValue = a[sortField as keyof Student]; 
+                const bValue = b[sortField as keyof Student];
+
+                let comparison = 0;
+                if (aValue > bValue) {
+                    comparison = 1;
+                } else if (aValue < bValue) {
+                    comparison = -1;
+                }
+                return sortOrder === 'desc' ? comparison * -1 : comparison;
+            });
+
+            setStudents(sortedStudents);
         } catch (error) {
             console.error('Error fetching students:', error);
         } finally {
             setLoading(false);
         }
-    }, [selectedYear, selectedTerm]);
+    }, [selectedYear, selectedTerm, sortOrder, sortField]);
 
     useEffect(() => {
         fetchStudents();
@@ -110,9 +127,14 @@ export default function StudentsPage() {
             setUploadError(err instanceof Error ? err.message : "Unknown error");
             setFile(null);
         } finally {
-            
             setUploadLoading(false);
         }
+    };
+
+    // Function to handle sorting
+    const handleSort = (field: string) => {
+        setSortField(field);
+        setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
     };
 
     return (
@@ -232,12 +254,20 @@ export default function StudentsPage() {
                                     <th className="p-2 rounded-tl-lg bg-primary text-white">Id</th>
                                     <th className="border-l p-2 text-start">Name</th>
                                     <th className="border-l p-2 text-start">Email</th>
+                                    <th className="border-l p-2 text-start">Availability</th>
                                     <th className="border-l p-2 text-start">Jobs</th>
                                     <th className="border-l p-2 text-start">Preferred Desk</th>
-                                    <th className="border-l p-2 text-start">Seniority</th>
+                                    <th className="border-l p-2 text-start cursor-pointer" onClick={() => handleSort('seniority')}>
+                                        Seniority 
+                                        {sortField === 'seniority' && (sortOrder === 'asc' ? <ArrowUp className="inline h-4 w-4" /> : <ArrowDown className="inline h-4 w-4" />)}
+                                    </th>
+                                    
                                     <th className="border-l p-2 text-start">Hrs / Wk</th>
                                     <th className="border-l p-2 text-start">Max shifts</th>
-                                    <th className="border-l p-2 text-start rounded-tr-lg">Shifts</th>
+                                    <th className="border-l p-2 text-start cursor-pointer" onClick={() => handleSort('assigned_shifts')}>
+                                        Shifts 
+                                        {sortField === 'assigned_shifts' && (sortOrder === 'asc' ? <ArrowUp className="inline h-4 w-4" /> : <ArrowDown className="inline h-4 w-4" />)}
+                                    </th>
                                 </tr>
                             </thead>
 
@@ -255,6 +285,9 @@ export default function StudentsPage() {
                                             </Link>
                                         </td>
                                         <td className="border p-2 text-start">{student.email}</td>
+                                        <td className="border p-2 text-start">
+                                            {student.issub ? "Sub" : (student.isworking ? "Working" : "Not Working")}
+                                        </td>
                                         <td className="border p-2 text-start">{student.jobs}</td>
                                         <td className="border p-2 text-start">{student.preferred_desk}</td>
                                         <td className="border p-2 text-start">{student.seniority}</td>

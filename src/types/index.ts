@@ -7,7 +7,7 @@ export interface User {
   role?: string
   email_confirmed_at?: string
   last_sign_in_at?: string
-} 
+}
 
 // ---------------- STUDENTS ---------------- //
 
@@ -17,10 +17,12 @@ export interface Student {
   preferred_name: string;
   email: string;
   jobs: string;
+  isworking: boolean;
+  issub: boolean;
   preferred_desk: string;
   preferred_hours_per_week: number;
   preferred_hours_in_a_row: number;
-  seniority: string;
+  seniority: number;
   assigned_shifts: number;
   max_shifts: number;
   year: string;
@@ -31,9 +33,15 @@ export interface Student {
 export interface TermStudent {
   preferred_name: string
   email: string
+  isworking: boolean;
+  issub: boolean;
   jobs: string
   seniority: number
+  preferred_desk: string;
+  preferred_hours_per_week: number;
+  preferred_hours_in_a_row: number;
   assigned_shifts: number
+  max_shifts: number;
   term_student_availability_slots: {
     time_slot: string
     day_of_week: string
@@ -45,9 +53,15 @@ export interface TermStudent {
 export interface InterimStudent {
   preferred_name: string
   email: string
+  isworking: boolean;
+  issub: boolean;
   jobs: string
   seniority: number
+  preferred_desk: string;
+  preferred_hours_per_week: number;
+  preferred_hours_in_a_row: number;
   assigned_shifts: number
+  max_shifts: number;
   interim_student_availability_slots: {
     id: string
     date: string

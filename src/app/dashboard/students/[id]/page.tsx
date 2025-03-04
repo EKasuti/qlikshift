@@ -117,16 +117,31 @@ export default function StudentDetailsPage() {
                         {/* Student's details */}
                         <div className="space-y-2">
                             <div>
-                                <span className="font-semibold">Name: </span><span>{student.preferred_name}</span>
+                                <span className="font-bold text-xl">{student.preferred_name} ({student.issub ? "Sub" : (student.isworking ? "Working" : "Not Working")}) </span>
                             </div>
-                            <div>
-                                <span className="font-semibold">Email: </span><span>{student.email}</span>
-                            </div>
-                            <div>
-                                <span className="font-semibold">Desks: </span><span>{student.jobs}</span>
-                            </div>
-                            <div>
-                                <span className="font-semibold">Seniority: </span><span>{student.seniority}</span>
+                            <div className="flex justify-between">
+                                <div>
+                                    <div>
+                                        <span className="font-semibold">Email: </span><span>{student.email}</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-semibold">Desks: </span><span>{student.jobs}</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-semibold">Seniority: </span><span>{student.seniority}</span>
+                                    </div>
+                                </div>
+                                <div className="ml-8">
+                                    <div>
+                                        <span className="font-semibold">Consecutive hours: </span><span>{student.preferred_hours_in_a_row}</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-semibold">Hrs/Wk: </span><span>{student.preferred_hours_per_week}</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-semibold">Max Shifts: </span><span>{student.max_shifts}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
