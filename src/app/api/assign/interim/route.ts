@@ -1,292 +1,381 @@
 import { supabaseAdmin } from '@/lib/supabase';
-import { NextResponse } from 'next/server';
+import * as xlsx from 'xlsx';
 
-// Shift Interface
-interface Shift {
-    id: string;
-    max_students?: number;
-    students_detailed?: string[];
-    start_time?: string;
-    end_time?: string;
+interface ExcelRow {
+    'Preferred Name'?: string;
+    'Email'?: string;
+    'Working'?: string;
+    'Jobs'?: string;
+    'Preferred Desk'?: string;
+    'Preferred Hours Per Week'?: number;
+    'Preferred Hours In A Row'?: number;
+    'Seniority'?: number;
+    'Assigned Shifts'?: number;
+    'Max Shifts'?: number;
+    [key: string]: string | number | undefined;
 }
 
-// Student availability Interface
-interface StudentAvailability {
-    id: string;
+interface InterimStudent {
+    preferredName: string;
+    email: string;
+    jobs?: string;
+    isWorking: boolean;
+    isSub: boolean;
+    preferredDesk: string;
+    preferredHoursPerWeek: number;
+    preferredHoursInARow: number;
+    seniority: number;
+    assignedShifts: number;
+    maxShifts?: number;
+    year: string;
+    termOrBreak: string;
+    availability: Record<string, { status: string; day: string; time: string; date: string }>;
+}
+
+interface InterimAvailabilitySlot {
     student_id: string;
     day_of_week: string;
     time_slot: string;
     availability_status: string;
+    scheduled_status: string;
     date: string;
-    created_at: string;
 }
 
-// Function to update shift details
-async function updateShiftDetails(shiftId: string, updatedStudents: string[]): Promise<boolean> {
-    console.log('DEBUG: Updating shift details in DB for shiftId:', shiftId);
-    console.log('DEBUG: Updated students:', updatedStudents);
-
-    const { error } = await supabaseAdmin!
-        .from('interim_shifts')
-        .update({ students_detailed: updatedStudents })
-        .eq('id', shiftId);
-
-    if (error) {
-        console.error(`Error updating shift ${shiftId}:`, error);
-        return false;
+function formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+        throw new Error(`Invalid date: ${dateString}`);
     }
-    return true;
+    // Format the date to YYYY-MM-DD
+    return date.toISOString().split('T')[0];
 }
 
-// Function to check if student is eligible for desk
-function isEligibleForDesk(studentJobs: string[], deskName: string): boolean {
-    return studentJobs
-        .map(job => job.trim().toLowerCase())
-        .includes(deskName.toLowerCase());
+function isTimeSlotHeader(header: string): boolean {
+    // Normalize the header by replacing line breaks and standardizing spaces
+    const normalizedHeader = header.replace(/\r\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // General pattern: Day Followed by Date, Followed by Time Range
+    const dayPattern = /^(mon|tue|wed|thu|fri|sat|sun)/i;
+    const datePattern = /\d+\/\d+/;
+
+    // Updated time pattern to catch "12noon" format
+    const timePattern = /\d+\s*(?:am|pm|noon)[-–—]\s*\d+\s*(?:am|pm|noon)/i;
+    const noonTimePattern = /\d+noon[-–—]\s*\d+\s*(?:am|pm)/i;
+
+    return dayPattern.test(normalizedHeader) &&
+        datePattern.test(normalizedHeader) &&
+        (timePattern.test(normalizedHeader) || noonTimePattern.test(normalizedHeader));
 }
 
-// Function to check if a shift slot has space
-function hasAvailableSpace(shift: Shift, currentAssignments: string[]): boolean {
-    const maxStudents = shift.max_students || 1;
-    return currentAssignments.length < maxStudents;
+function parseTimeSlotHeader(header: string): { day: string; time: string; date: string } {
+    // Normalize the header
+    const normalizedHeader = header.replace(/\r\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // Extract day of week
+    const dayMatch = normalizedHeader.match(/^(mon|tue|wed|thu|fri|sat|sun)/i);
+    if (!dayMatch) throw new Error(`Could not extract day from header: ${normalizedHeader}`);
+    const day = dayMatch[0].charAt(0).toUpperCase() + dayMatch[0].slice(1).toLowerCase();
+
+    // Extract date
+    const dateMatch = normalizedHeader.match(/(\d+\/\d+)/);
+    if (!dateMatch) throw new Error(`Could not extract date from header: ${normalizedHeader}`);
+    const dateString = dateMatch[1]; // Format: MM/DD
+
+    // Handle the case when "noon" is attached to a number (e.g., "12noon")
+    let modifiedHeader = normalizedHeader;
+    if (modifiedHeader.includes('noon')) {
+        modifiedHeader = modifiedHeader.replace(/(\d+)noon/i, '$1 noon');
+    }
+
+    // Extract time range with more flexible pattern
+    const timeRangeMatch =
+        modifiedHeader.match(/(\d+)\s*([ap]m|noon)-\s*(\d+)\s*([ap]m|noon)/i) ||
+        modifiedHeader.match(/(\d+)\s*noon\s*-\s*(\d+)\s*([ap]m)/i);
+
+    if (!timeRangeMatch) throw new Error(`Could not extract time range from header: ${modifiedHeader}`);
+
+    let startTime, startPeriod, endTime, endPeriod;
+
+    // Handle different match patterns
+    if (timeRangeMatch[2] && (timeRangeMatch[2].toLowerCase() === 'am' ||
+        timeRangeMatch[2].toLowerCase() === 'pm' ||
+        timeRangeMatch[2].toLowerCase() === 'noon')) {
+        // First pattern matched: normal time range
+        startTime = timeRangeMatch[1];
+        startPeriod = timeRangeMatch[2].toLowerCase();
+        endTime = timeRangeMatch[3];
+        endPeriod = timeRangeMatch[4].toLowerCase();
+    } else {
+        // Second pattern matched: "12noon - 2pm" format
+        startTime = timeRangeMatch[1];
+        startPeriod = 'noon';
+        endTime = timeRangeMatch[2];
+        endPeriod = timeRangeMatch[3].toLowerCase();
+    }
+
+    // Handle "noon" special case
+    if (startPeriod === 'noon') startPeriod = 'pm';
+    if (endPeriod === 'noon') endPeriod = 'pm';
+
+    // Convert to 24-hour format
+    const startHour = (startPeriod === 'pm' && startTime !== '12') ? parseInt(startTime) + 12 : (startPeriod === 'am' && startTime === '12' ? 0 : parseInt(startTime));
+    const endHour = (endPeriod === 'pm' && endTime !== '12') ? parseInt(endTime) + 12 : (endPeriod === 'am' && endTime === '12' ? 0 : parseInt(endTime));
+
+    // Format the date correctly
+    const currentYear = new Date().getFullYear();
+    const formattedDate = formatDate(`${currentYear}-${dateString}`);
+
+    return {
+        day,
+        time: `${String(startHour).padStart(2, '0')}:00:00 - ${String(endHour).padStart(2, '0')}:00:00`, // Format as HH:mm:ss
+        date: formattedDate
+    };
 }
 
-// Function to check if it's consecutive
-function isConsecutive(existing: Shift, candidate: Shift): boolean {
-    return existing.end_time === candidate.start_time || candidate.end_time === existing.start_time;
+// Determine if a status indicates an assigned shift
+function isAssignedShiftStatus(status: string): boolean {
+    // Modify this according to your system's statuses that indicate assigned shifts
+    return status === 'Available' ||
+        status === 'Assigned' ||
+        status === 'Scheduled' ||
+        status.includes('Working');
 }
 
+
+// POST function to store Interim Students from excel sheet
 export async function POST(request: Request) {
     try {
-        const body = await request.json();
-        const { desk_name, year, term_or_break, round_number, set_to_max_shifts, shifts_to_assign, consider_preferred_desk } = body;
+        console.log('Starting POST request to upload interim students...');
 
-        console.log('DEBUG: Incoming request body:', body);
+        if (!supabaseAdmin) throw new Error('Database connection failed');
+        console.log('Database connection established.');
 
-        if (
-            !desk_name ||
-            !year ||
-            !term_or_break ||
-            round_number === undefined ||
-            set_to_max_shifts === undefined ||
-            shifts_to_assign === undefined ||
-            consider_preferred_desk === undefined
-        ) {
-            console.error('ERROR: Missing required fields in request body');
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        const formData = await request.formData();
+        const file = formData.get('file') as File;
+        const year = formData.get('year') as string;
+        const termOrBreak = formData.get('term_or_break') as string;
+
+        if (!file || !year || !termOrBreak) {
+            console.error('Missing required fields:', { file, year, termOrBreak });
+            return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
+        }
+        console.log('File and parameters received:', { fileName: file.name, year, termOrBreak });
+
+        const buffer = await file.arrayBuffer();
+        const workbook = xlsx.read(new Uint8Array(buffer), { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData: ExcelRow[] = xlsx.utils.sheet_to_json(sheet, { defval: undefined });
+        console.log('Excel data parsed, first row keys:', Object.keys(jsonData[0]));
+
+        // Filter for time slot headers using our more robust method
+        const timeSlotHeaders = Object.keys(jsonData[0]).filter(isTimeSlotHeader);
+        console.log('Time slot headers found:', timeSlotHeaders);
+
+        if (timeSlotHeaders.length === 0) {
+            console.error('No time slot headers found. Sample headers:', Object.keys(jsonData[0]).slice(0, 10));
+            return new Response(JSON.stringify({
+                error: 'No time slot headers detected in the Excel file'
+            }), { status: 400 });
         }
 
-        const logSummary: string[] = [];
-        logSummary.push(`Processing assignments for Desk: ${desk_name}, Year: ${year}, Term/Break: ${term_or_break}`);
+        const students: InterimStudent[] = jsonData.map(row => {
+            const student: InterimStudent = {
+                preferredName: row['Preferred Name']?.toString().trim() || '',
+                email: row['Email']?.toString().trim() || '',
+                jobs: row['Jobs']?.toString().trim(),
+                preferredDesk: row['Preferred Desk']?.toString().trim() || '',
+                preferredHoursPerWeek: Number(row['Preferred Hours Per Week'] || 0),
+                preferredHoursInARow: Number(row['Preferred Hours In A Row'] || 0),
+                seniority: Number(row['Seniority']) || 0,
+                assignedShifts: 0, // Initialize to 0, will count later
+                maxShifts: Math.max(10, Math.floor(Number(row['Preferred Hours Per Week'] || 0) / 2)),
+                year: year.trim(),
+                termOrBreak: termOrBreak.trim(),
+                availability: {},
+                isWorking: false,
+                isSub: false
+            };
 
-        const { data: students, error: studentError } = await supabaseAdmin!
-            .from('interim_students')
-            .select('*')
-            .eq('year', year)
-            .eq('term_or_break', term_or_break);
-        if (studentError) throw studentError;
+            // Set isWorking and isSub based on the 'Working' field
+            const workingStatus = row['Working']?.toString().trim();
+            if (workingStatus === "Working (scheduled shifts)") {
+                student.isWorking = true;
+                student.isSub = false;
+            } else if (workingStatus === "Working (sub)") {
+                student.isWorking = true;
+                student.isSub = true;
+            } else if (workingStatus === "Not working") {
+                student.isWorking = false;
+                student.isSub = false;
+            }
 
-        // 2) Fetch desk info
-        const { data: desks, error: deskError } = await supabaseAdmin!
-            .from('interim_desks')
-            .select('*')
-            .eq('desk_name', desk_name)
-            .eq('term_or_break', term_or_break);
-        if (deskError) throw deskError;
-        if (!desks?.length) {
-            throw new Error(`No desk found with name ${desk_name} for ${term_or_break}`);
-        }
+            timeSlotHeaders.forEach(header => {
+                try {
+                    const { time, day, date } = parseTimeSlotHeader(header);
+                    const value = row[header];
 
-        // 3) Fetch slots and shifts
-        const { data: slots, error: slotError } = await supabaseAdmin!
-            .from('interim_slots')
-            .select('*, interim_shifts(*)')
-            .eq('interim_desk_id', desks[0].id);
-        if (slotError) throw slotError;
+                    const availabilityStatus = typeof value === 'string'
+                        ? value.trim()
+                        : (student.isSub ? 'Sub' : (student.isWorking ? 'Unavailable' : 'Not Available'));
 
-        // 4) Create a set of all dates we need to check
-        const dates = new Set((slots || []).map(slot => slot.date));
+                    const key = `${time}-${day}-${date}`;
+                    student.availability[key] = {
+                        status: availabilityStatus,
+                        day,
+                        time,
+                        date
+                    };
 
-        // 5) Fetch availability for all relevant dates
-        const availabilityPromises = Array.from(dates).map(date =>
-            supabaseAdmin!
-                .from('interim_student_availability_slots')
-                .select('*')
-                .eq('date', date)
+                    // Count assigned shifts
+                    if (isAssignedShiftStatus(availabilityStatus)) {
+                        student.assignedShifts += 1;
+                    }
+                } catch (error) {
+                    console.warn(`Error processing column: ${header}`, error);
+                }
+            });
+
+            return student;
+        }).filter(student =>
+            student.email &&
+            student.preferredName &&
+            student.year &&
+            student.termOrBreak
         );
 
-        const availabilityResults = await Promise.all(availabilityPromises);
-        const availability = availabilityResults.flatMap(result => result.data || []);
+        // Log assigned shifts count for each student
+        console.log('Students with assigned shifts:', students.map(s => ({
+            name: s.preferredName,
+            email: s.email,
+            assignedShifts: s.assignedShifts
+        })));
 
-        // 6) Build availability map
-        const availabilityMap = new Map<string, string>();
-        for (const rec of availability as StudentAvailability[]) {
-            const key = `${rec.student_id}|${rec.date}|${rec.time_slot}`;
-            availabilityMap.set(key, rec.availability_status);
+        const { data: dbStudents, error: upsertError } = await supabaseAdmin
+            .from('interim_students')
+            .upsert(
+                students.map(s => ({
+                    preferred_name: s.preferredName,
+                    email: s.email,
+                    jobs: s.jobs,
+                    preferred_desk: s.preferredDesk,
+                    preferred_hours_per_week: s.preferredHoursPerWeek,
+                    preferred_hours_in_a_row: s.preferredHoursInARow,
+                    seniority: s.seniority,
+                    assigned_shifts: s.assignedShifts, // Now correctly counted
+                    max_shifts: s.maxShifts,
+                    year: s.year,
+                    term_or_break: s.termOrBreak,
+                    isworking: s.isWorking,
+                    issub: s.isSub
+                })),
+                { onConflict: 'email, year, term_or_break' }
+            )
+            .select('id, email, year, term_or_break, isworking, issub');
+
+        if (upsertError) {
+            console.error('Error upserting students:', upsertError);
+            throw upsertError;
         }
 
-        // Sort students by seniority
-        const sortedStudents = (students || []).sort((a, b) => (b.seniority || 0) - (a.seniority || 0));
+        const availabilitySlots: InterimAvailabilitySlot[] = [];
 
-        // Track assignments
-        let totalAssignedShifts = 0;
-        const shiftAssignments = new Map<string, string[]>();
+        for (const student of students) {
+            const dbStudent = dbStudents.find(s =>
+                s.email === student.email &&
+                s.year === student.year &&
+                s.term_or_break === student.termOrBreak
+            );
 
-        // Initialize current assignments
-        for (const slot of (slots || [])) {
-            for (const shift of (slot.interim_shifts || [])) {
-                const current = (shift.students_detailed || [])
-                    .filter((name: string) => name.toLowerCase() !== 'open');
-                shiftAssignments.set(shift.id, current);
-            }
-        }
-
-        // Process each student
-        for (const student of sortedStudents) {
-            const jobs = student.jobs ? student.jobs.split(',') : [];
-
-            // Check eligibility
-            if (!isEligibleForDesk(jobs, desk_name)) {
-                logSummary.push(`Skipping ${student.preferred_name} (not eligible for desk)`);
+            if (!dbStudent) {
+                console.warn('No matching database student found for:', student);
                 continue;
             }
 
-            // Check preferred desk
-            if (consider_preferred_desk &&
-                student.preferred_desk?.toLowerCase() !== desk_name.toLowerCase()) {
-                logSummary.push(`Skipping ${student.preferred_name} (preferred desk mismatch)`);
-                continue;
-            }
+            await supabaseAdmin
+                .from('interim_student_availability_slots')
+                .delete()
+                .match({
+                    student_id: dbStudent.id,
+                    year: student.year,
+                    term_or_break: student.termOrBreak
+                });
 
-            const maxAssignmentsForStudent = set_to_max_shifts && student.max_shifts
-                ? Math.floor(student.max_shifts / 2)
-                : shifts_to_assign;
-
-            let assignedSoFar = 0;
-            const assignedShiftsByDate: Record<string, Shift[]> = {};
-
-            // Process slots for this student
-            for (const slot of (slots || [])) {
-                if (assignedSoFar >= maxAssignmentsForStudent) break;
-
-                const sortedShifts = (slot.interim_shifts || []).sort((a: Shift, b: Shift) =>
-                    (a.start_time || '').localeCompare(b.start_time || '')
-                );
-
-                for (const shift of sortedShifts) {
-                    if (assignedSoFar >= maxAssignmentsForStudent) break;
-
-                    const shiftTimeSlot = `${shift.start_time} - ${shift.end_time}`;
-                    const key = `${student.id}|${slot.date}|${shiftTimeSlot}`;
-
-                    const availabilityStatus = availabilityMap.get(key);
-
-                    // Skip if not available
-                    if (!availabilityStatus || availabilityStatus === 'Not Available') continue;
-
-                    // Check capacity and existing assignments
-                    const currentAssignments = shiftAssignments.get(shift.id) || [];
-                    if (currentAssignments.includes(student.preferred_name) ||
-                        !hasAvailableSpace(shift, currentAssignments)) continue;
-
-                    // Check consecutive shifts
-                    const alreadyAssignedShifts = assignedShiftsByDate[slot.date] || [];
-                    const canAssign = alreadyAssignedShifts.length === 0 ||
-                        alreadyAssignedShifts.some(existing => isConsecutive(existing, shift));
-
-                    if (!canAssign) continue;
-
-                    // Update assignment
-                    const newAssignments = [...currentAssignments, student.preferred_name];
-                    const remainingSlots = Math.max(0, (shift.max_students || 1) - newAssignments.length);
-                    const updatedStudents = [...newAssignments, ...Array(remainingSlots).fill('Open')];
-
-                    const ok = await updateShiftDetails(shift.id, updatedStudents);
-                    if (ok) {
-                        shiftAssignments.set(shift.id, newAssignments);
-                        assignedShiftsByDate[slot.date] = [...alreadyAssignedShifts, shift];
-                        assignedSoFar++;
-                        totalAssignedShifts++;
-                        logSummary.push(`Assigned ${student.preferred_name} to ${slot.date} (${shiftTimeSlot}) [${availabilityStatus}]`);
-
-                        // Update student's assigned shifts count
-                        await supabaseAdmin!
-                            .from('interim_students')
-                            .update({ assigned_shifts: (student.assigned_shifts || 0) + 1 })
-                            .eq('id', student.id);
-
-                        // Update availability status to desk name
-                        await supabaseAdmin!
-                            .from('interim_student_availability_slots')
-                            .update({ scheduled_status: desk_name })
-                            .eq('student_id', student.id)
-                            .eq('date', slot.date)
-                            .eq('time_slot', shiftTimeSlot);
-                    }
-                }
-            }
-            if (assignedSoFar === 0) {
-                logSummary.push(`No assignment made for ${student.preferred_name}`);
-            }
+            Object.entries(student.availability).forEach(([, { status, day, time, date }]) => {
+                availabilitySlots.push({
+                    student_id: dbStudent.id,
+                    day_of_week: day,
+                    time_slot: time,
+                    availability_status: status,
+                    scheduled_status: status,
+                    date
+                });
+            });
         }
 
-        logSummary.push(`Total shifts assigned: ${totalAssignedShifts}`);
+        const { error: slotError } = await supabaseAdmin
+            .from('interim_student_availability_slots')
+            .insert(availabilitySlots);
 
-        // Save summary
-        const { error: summaryError } = await supabaseAdmin!
-            .from('student_assignments')
-            .insert([{
-                year,
-                term_or_break,
-                desk_name,
-                round_number,
-                set_to_max_shifts,
-                shifts_to_assign,
-                consider_preferred_desk,
-                log_summary: logSummary.join('\n'),
-            }]);
-
-        if (summaryError) {
-            console.error('Error inserting log summary:', summaryError);
+        if (slotError) {
+            console.error('Error inserting availability slots:', slotError);
+            throw slotError;
         }
 
-        return NextResponse.json({ message: 'Assignments completed', logSummary }, { status: 200 });
+        return new Response(JSON.stringify({
+            message: 'Import successful for interim students',
+            stats: {
+                students: dbStudents.length,
+                slots: availabilitySlots.length,
+                totalAssignedShifts: students.reduce((acc, student) => acc + student.assignedShifts, 0)
+            }
+        }), { status: 200 });
+
     } catch (error) {
-        console.error('ERROR:', error);
-        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+        console.error('Import error:', error);
+        return new Response(JSON.stringify({
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }), { status: 500 });
     }
 }
 
+// GET function remains the same
 export async function GET(request: Request) {
     try {
-        if (!supabaseAdmin) throw new Error('Could not connect to database');
+        console.log('Starting GET request for interim students...');
 
         const { searchParams } = new URL(request.url);
         const year = searchParams.get('year');
         const term = searchParams.get('term_or_break');
-        const desk = searchParams.get('desk');
+
+        if (!supabaseAdmin) throw new Error('Database connection failed');
 
         let query = supabaseAdmin
-            .from('student_assignments')
-            .select('*')
-            .order('created_at', { ascending: false });
+            .from('interim_students')
+            .select(`
+                *,
+                interim_student_availability_slots (
+                    day_of_week,
+                    time_slot,
+                    availability_status,
+                    date
+                )
+            `)
+            .order('seniority', { ascending: false });
 
-        // Apply filters if provided
-        if (year) {
-            query = query.eq('year', year);
-        }
-        if (term) {
-            query = query.eq('term_or_break', term);
-        }
-        if (desk) {
-            query = query.ilike('desk_name', `%${desk}%`);
-        }
+        if (year) query = query.eq('year', year);
+        if (term) query = query.eq('term_or_break', term);
 
-        const { data: desks } = await query;
+        const { data, error } = await query;
 
-        return NextResponse.json(desks || [], { status: 200 });
+        if (error) throw error;
 
-    } catch {
-        return NextResponse.json({ error: 'Failed to fetch interim assignments' }, { status: 500 });
+        return new Response(JSON.stringify(data), { status: 200 });
+
+    } catch (error) {
+        console.error('Retrieval error:', error);
+        return new Response(JSON.stringify({
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }), { status: 500 });
     }
 }

@@ -136,8 +136,6 @@ function parseTimeSlotHeader(header: string): { day: string; time: string; date:
 // POST function to store Interim Students from excel sheet
 export async function POST(request: Request) {
     try {
-        console.log('Starting POST request to upload interim students...');
-
         if (!supabaseAdmin) throw new Error('Database connection failed');
         console.log('Database connection established.');
 
@@ -150,17 +148,14 @@ export async function POST(request: Request) {
             console.error('Missing required fields:', { file, year, termOrBreak });
             return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
         }
-        console.log('File and parameters received:', { fileName: file.name, year, termOrBreak });
 
         const buffer = await file.arrayBuffer();
         const workbook = xlsx.read(new Uint8Array(buffer), { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData: ExcelRow[] = xlsx.utils.sheet_to_json(sheet, { defval: undefined });
-        console.log('Excel data parsed, first row keys:', Object.keys(jsonData[0]));
 
         // Filter for time slot headers using our more robust method
         const timeSlotHeaders = Object.keys(jsonData[0]).filter(isTimeSlotHeader);
-        console.log('Time slot headers found:', timeSlotHeaders);
 
         if (timeSlotHeaders.length === 0) {
             console.error('No time slot headers found. Sample headers:', Object.keys(jsonData[0]).slice(0, 10));
@@ -280,7 +275,6 @@ export async function POST(request: Request) {
                 });
 
             Object.entries(student.availability).forEach(([, { status, day, time, date }]) => {
-                console.log(`Processing availability: ${day}, ${time}, ${date}, Status: ${status}`);
                 if (day && time) {
                     availabilitySlots.push({
                         student_id: dbStudent.id,
@@ -293,9 +287,6 @@ export async function POST(request: Request) {
                 }
             });
         }
-
-        // Log the prepared availability slots
-        console.log('Prepared availability slots:', availabilitySlots);
 
         const { error: slotError } = await supabaseAdmin
             .from('interim_student_availability_slots')
@@ -325,8 +316,6 @@ export async function POST(request: Request) {
 // GET function remains the same
 export async function GET(request: Request) {
     try {
-        console.log('Starting GET request for interim students...');
-
         const { searchParams } = new URL(request.url);
         const year = searchParams.get('year');
         const term = searchParams.get('term_or_break');

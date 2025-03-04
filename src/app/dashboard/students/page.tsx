@@ -25,8 +25,6 @@ export default function StudentsPage() {
     const [uploadLoading, setUploadLoading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
-
-    // New state for filter
     const [filter, setFilter] = useState<'all' | 'sub' | 'working' | 'notWorking'>('all');
 
     const fetchStudents = useCallback(async () => {
@@ -139,6 +137,7 @@ export default function StudentsPage() {
             setFile(null);
         } finally {
             setUploadLoading(false);
+            setUploadSuccess(null)
         }
     };
 
@@ -177,8 +176,6 @@ export default function StudentsPage() {
                 <div className="flex items-center gap-2">
                     {/* Year */}
                     <Button variant="outline">{selectedYear}</Button>
-
-                    
 
                     {/* Button to Decrement Year */}
                     <Button 
@@ -242,7 +239,9 @@ export default function StudentsPage() {
             <Dialog open={isDialogOpen} onOpenChange={(open) => {
                 setIsDialogOpen(open);
                 if (!open) {
-                    setFile(null); // Reset file when dialog is closed
+                    setFile(null);
+                    setUploadError(null)
+                    setUploadSuccess(null)
                 }
             }}>
                 <DialogContent className="bg-white">
