@@ -31,11 +31,7 @@ async function updateShiftDetails(shiftId: string, updatedStudents: string[]): P
         .update({ students_detailed: updatedStudents })
         .eq('id', shiftId);
 
-    if (error) {
-        console.error(`Error updating shift ${shiftId}:`, error);
-        return false;
-    }
-    return true;
+    return !error;
 }
 
 // Function to check if student is eligible for desk
@@ -129,7 +125,6 @@ export async function POST(request: Request) {
         const sortedStudents = (students || []).sort((a, b) => (b.seniority || 0) - (a.seniority || 0));
 
         // Track assignments
-        let totalAssignedShifts = 0;
         const shiftAssignments = new Map<string, string[]>();
 
         // Initialize current assignments
@@ -142,6 +137,7 @@ export async function POST(request: Request) {
         }
 
         // Process each student
+        let totalAssignedShifts = 0;
         for (const student of sortedStudents) {
             const jobs = student.jobs ? student.jobs.split(',') : [];
 
@@ -158,8 +154,8 @@ export async function POST(request: Request) {
                 continue;
             }
 
-            const maxAssignmentsForStudent = set_to_max_shifts && student.max_shifts
-                ? Math.floor(student.max_shifts / 2)
+            const maxAssignmentsForStudent = student.max_shifts
+                ? Math.floor(student.max_shifts)
                 : shifts_to_assign;
 
             let assignedSoFar = 0;
@@ -191,33 +187,24 @@ export async function POST(request: Request) {
 
                     // Check consecutive shifts
                     const alreadyAssignedShifts = assignedShiftsByDate[slot.date] || [];
-                    const canAssign = alreadyAssignedShifts.length === 0 ||
-                        alreadyAssignedShifts.some(existing => isConsecutive(existing, shift));
+                    if (alreadyAssignedShifts.length > 0 && !alreadyAssignedShifts.some(existing => isConsecutive(existing, shift))) continue;
 
-                    if (!canAssign) continue;
 
                     // Update assignment
                     const newAssignments = [...currentAssignments, student.preferred_name];
                     const remainingSlots = Math.max(0, (shift.max_students || 1) - newAssignments.length);
                     const updatedStudents = [...newAssignments, ...Array(remainingSlots).fill('Open')];
 
-                    const ok = await updateShiftDetails(shift.id, updatedStudents);
-                    if (ok) {
+                    if (await updateShiftDetails(shift.id, updatedStudents)) {
                         shiftAssignments.set(shift.id, newAssignments);
                         assignedShiftsByDate[slot.date] = [...alreadyAssignedShifts, shift];
                         assignedSoFar++;
                         totalAssignedShifts++;
-                        logSummary.push(`Assigned ${student.preferred_name} to ${slot.date} (${shiftTimeSlot}) [${availabilityStatus}]`);
 
-                        // Update student's assigned shifts count
-                        await supabaseAdmin!
-                            .from('interim_students')
-                            .update({ assigned_shifts: (student.assigned_shifts || 0) + 1 })
-                            .eq('id', student.id);
+                        // Add to log summary
+                        logSummary.push(`Assigned ${student.preferred_name} to shift ${shift.id} (${shiftTimeSlot})`);
 
-                        // Update availability status to desk name
-                        await supabaseAdmin!
-                            .from('interim_student_availability_slots')
+                        await supabaseAdmin!.from('interim_student_availability_slots')
                             .update({ scheduled_status: desk_name })
                             .eq('student_id', student.id)
                             .eq('date', slot.date)
@@ -225,8 +212,8 @@ export async function POST(request: Request) {
                     }
                 }
             }
-            if (assignedSoFar === 0) {
-                logSummary.push(`No assignment made for ${student.preferred_name}`);
+            if (assignedSoFar > 0) {
+                await supabaseAdmin!.from('interim_students').update({ assigned_shifts: (student.assigned_shifts || 0) + assignedSoFar }).eq('id', student.id);
             }
         }
 
