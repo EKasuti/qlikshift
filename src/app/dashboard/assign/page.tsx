@@ -25,7 +25,7 @@ interface AssignmentData {
 export default function AssignPage() {
     const [selectedYear, setSelectedYear] = useState<number>(2025);
     const [selectedTerm, setSelectedTerm] = useState<string>("Spring Break");
-    const [selectedDesk, setSelectedDesk] = useState<string>("");
+    const [selectedDesk, setSelectedDesk] = useState<string>("jmc");
     const [assignments, setAssignments] = useState<AssignmentData[]>([]);
     const [showLogs, setShowLogs] = useState<Record<number, boolean>>({});
     const [loading, setLoading] = useState<boolean>(false);
@@ -34,23 +34,6 @@ export default function AssignPage() {
     const [setToMaxShifts, setSetToMaxShifts] = useState<boolean>(false);
     const [shiftsToAssign, setShiftsToAssign] = useState(1);
     const [considerPreferredDesk, setConsiderPreferredDesk] = useState(false);
-
-    useEffect(() => {
-        // Check if running in the browser
-        if (typeof window !== "undefined") {
-            const storedDesk = localStorage.getItem("selectedDesk");
-            if (storedDesk) {
-                setSelectedDesk(storedDesk);
-            } else {
-                setSelectedDesk("jmc"); // Default value if nothing is stored
-            }
-        }
-    }, []);
-
-    // Save the selected desk to local storage whenever it changes
-    useEffect(() => {
-        localStorage.setItem("selectedDesk", selectedDesk);
-    }, [selectedDesk]);
 
     // Function to fetch assignments - using useCallback to memoize the function
     const fetchAssignments = useCallback(async () => {
