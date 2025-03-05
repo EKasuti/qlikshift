@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ChevronLeft, ChevronRight, Users, UserCheck, Calendar, GraduationCap } from "lucide-react"
+import { ChevronLeft, ChevronRight, Users, UserCheck, Calendar, GraduationCap, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -9,6 +9,7 @@ import Link from "next/link"
 import { StatsCards, type StatCardData } from "@/components/dashboard/stats-cards"
 import { AvailableStudent, Interim_Desk, InterimShift, TermDesk, TermShift } from "@/types"
 import { Card } from "@/components/ui/card"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 
 const interim_timeSlots = [
     "08:00:00 - 10:00:00",
@@ -262,6 +263,7 @@ export default function DesksPage() {
     const [selectedTerm, setSelectedTerm] = useState<string>("Spring Break")
     const [selectedDesk, setSelectedDesk] = useState<string>("jmc")
     const isInterim = selectedTerm.endsWith("Break")
+    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   
     useEffect(() => {
         async function fetchDesks() {
@@ -280,6 +282,45 @@ export default function DesksPage() {
 
         fetchDesks()
     }, [selectedYear, selectedTerm, selectedDesk, isInterim])
+
+
+    const handleExportDesk = async () => {
+        try {
+            const response = await fetch(
+                isInterim 
+                ? `/api/desks/interim/export?year=${selectedYear}&term_or_break=${selectedTerm}&desk=${selectedDesk}` 
+                : `/api/desks/term/export?year=${selectedYear}&term_or_break=${selectedTerm}&desk=${selectedDesk}`
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to export desk');
+            }
+
+            // Get the file name from the Content-Disposition header
+            const contentDisposition = response.headers.get('Content-Disposition');
+            const fileName = contentDisposition 
+                ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+                : `${selectedDesk}_${selectedTerm}_${selectedYear}_export.csv`;
+
+            // Download the file
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+
+            // Close the dialog
+            setIsExportDialogOpen(false);
+        } catch (error) {
+            console.error('Export error:', error);
+            // Optionally show an error toast or alert
+        }
+    };
 
     const statsData: StatCardData[] = [
         { title: "Total Shifts", value: 0, icon: Calendar, color: "purple" },
@@ -364,10 +405,40 @@ export default function DesksPage() {
                     </Select>
                 </div>
 
-                {/* Button to Add desk */}
-                <Button variant="outline" className="text-primary border-primary">
-                    Create Desk
-                </Button>
+                <div className="flex gap-2">
+                    {/* Button to Export desk */}
+                    <AlertDialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+                        <AlertDialogTrigger asChild>
+                            <Button 
+                                variant="outline" 
+                                className="text-red-500 border-red-500"
+                                onClick={() => setIsExportDialogOpen(true)}
+                            >
+                                <Download className="mr-2 h-4 w-4" /> Export Desk
+                            </Button>
+                        </AlertDialogTrigger>
+
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Export Desk</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Do you want to export the {selectedDesk.toUpperCase()} desk for {selectedTerm} {selectedYear}?
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleExportDesk}className="text-white">
+                                    Export
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                    {/* Button to Add desk */}
+                    <Button variant="outline" className="text-primary border-primary">
+                        Create Desk
+                    </Button>
+                </div>
             </div>
 
             {/* Desk tab names */}
