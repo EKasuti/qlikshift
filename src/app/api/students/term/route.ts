@@ -5,6 +5,7 @@ import * as xlsx from 'xlsx';
 interface ExcelRow {
     'Preferred Name'?: string;
     'Email'?: string;
+    'Working'?: string;
     'Jobs'?: string;
     'Preferred Desk'?: string;
     'Preferred Hours Per Week'?: number;
@@ -20,6 +21,8 @@ interface TermStudent {
     preferredName: string;
     email: string;
     jobs?: string;
+    isWorking: boolean;
+    isSub: boolean;
     preferredDesk: string;
     preferredHoursPerWeek: number;
     preferredHoursInARow: number;
@@ -42,6 +45,10 @@ interface TermAvailabilitySlot {
 
 function convertExcelTime(timeStr: string): string {
     const time = timeStr.toLowerCase().replace(/\s/g, '');
+
+    if (time === 'noon') return '12:00'; // Noon
+    if (time === 'midnight') return '00:00'; // Midnight
+
     const match = time.match(/(\d+)(am|pm)/);
     if (!match) throw new Error(`Invalid time format: ${timeStr}`);
 
@@ -55,17 +62,20 @@ function convertExcelTime(timeStr: string): string {
 }
 
 function parseTimeSlotHeader(header: string): { day: string; time: string } {
-    const match = header.match(/^(\w+)\s+(\d+[ap]m)-(\d+[ap]m)$/i);
-    if (!match) throw new Error(`Invalid time slot header: ${header}`);
+    console.log(`Parsing time slot header: ${header}`);
+
+    const normalizedHeader = header.replace(/\s+/g, ' ').trim();
+
+    const match = normalizedHeader.match(/^(\w+)\s+((?:\d+[ap]m|noon|midnight))-?((?:\d+[ap]m|noon|midnight))$/i);
+    if (!match) throw new Error(`Invalid time slot header: ${normalizedHeader}`);
 
     const day = match[1];
     const startTime = convertExcelTime(match[2]);
     const endTime = convertExcelTime(match[3]);
 
-    return {
-        day,
-        time: `${startTime} - ${endTime}`
-    };
+    console.log(`Parsed day: ${day}, startTime: ${startTime}, endTime: ${endTime}`);
+
+    return { day, time: `${startTime} - ${endTime}` };
 }
 
 // POST function to store Term Students from excel sheet
@@ -87,25 +97,43 @@ export async function POST(request: Request) {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData: ExcelRow[] = xlsx.utils.sheet_to_json(sheet, { defval: undefined });
 
-        const timeSlotHeaders = Object.keys(jsonData[0]).filter(header =>
-            header.match(/^\w+\s+\d+[ap]m-\d+[ap]m$/i)
-        );
+        const timeSlotHeaders = Object.keys(jsonData[0]).filter(header => {
+            // Normalizing the header
+            const normalizedHeader = header.replace(/\s+/g, ' ').trim();
+            // Matching the normalized header against the regular expression
+            return normalizedHeader.match(/^\w+\s+((?:\d+[ap]m|noon|midnight))[-\s]+((?:\d+[ap]m|noon|midnight))$/i);
+        });
 
         const students: TermStudent[] = jsonData.map(row => {
             const student: TermStudent = {
                 preferredName: row['Preferred Name']?.trim() || '',
-                email: row['Email']?.trim() || '',
-                jobs: row['Jobs']?.trim(),
-                preferredDesk: row['Preferred Desk']?.trim() || '',
+                email: row['Email']?.toString().trim() || '',
+                jobs: row['Jobs']?.toString().trim(),
+                preferredDesk: row['Preferred Desk']?.toString().trim() || '',
                 preferredHoursPerWeek: Number(row['Preferred Hours Per Week'] || 0),
                 preferredHoursInARow: Number(row['Preferred Hours In A Row'] || 0),
                 seniority: Number(row['Seniority']) || 0,
                 assignedShifts: 0,
-                maxShifts: Math.max(10, Number(row['Preferred Hours Per Week'] || 0)),
+                maxShifts: Math.floor(Number(row['Preferred Hours Per Week'] || 0) / 2),
                 year: year.trim(),
                 termOrBreak: termOrBreak.trim(),
-                availability: {}
+                availability: {},
+                isWorking: false,
+                isSub: false
             };
+
+            // Set isWorking and isSub based on the 'Working' field
+            const workingStatus = row['Working']?.toString().trim();
+            if (workingStatus === "Working (scheduled shifts)") {
+                student.isWorking = true;
+                student.isSub = false;
+            } else if (workingStatus === "Working (sub)") {
+                student.isWorking = true;
+                student.isSub = true;
+            } else if (workingStatus === "Not working") {
+                student.isWorking = false;
+                student.isSub = false;
+            }
 
             timeSlotHeaders.forEach(header => {
                 try {
@@ -145,7 +173,9 @@ export async function POST(request: Request) {
                     assigned_shifts: s.assignedShifts,
                     max_shifts: s.maxShifts,
                     year: s.year,
-                    term_or_break: s.termOrBreak
+                    term_or_break: s.termOrBreak,
+                    isworking: s.isWorking,
+                    issub: s.isSub
                 })),
                 { onConflict: 'email,year,term_or_break' }
             )
@@ -216,7 +246,7 @@ export async function GET(request: Request) {
         let query = supabaseAdmin
             .from('term_students')
             .select(`*, term_student_availability_slots (day_of_week, time_slot, availability_status, scheduled_status)`)
-            .order('preferred_name', { ascending: true });
+            .order('seniority', { ascending: false });
 
         if (year) query = query.eq('year', year);
         if (term) query = query.eq('term_or_break', term);
@@ -225,28 +255,7 @@ export async function GET(request: Request) {
 
         if (error) throw error;
 
-        if (!year && !term) {
-            const grouped = data.reduce((acc: Record<string, { year: string; term_or_break: string; students: TermStudent[] }>, student) => {
-                const key = `${student.year}_${student.term_or_break}`;
-                if (!acc[key]) {
-                    acc[key] = {
-                        year: student.year,
-                        term_or_break: student.term_or_break,
-                        students: []
-                    };
-                }
-                acc[key].students.push(student);
-                return acc;
-            }, {});
-
-            return new Response(JSON.stringify(Object.values(grouped)), {
-                status: 200
-            });
-        }
-
-        return new Response(JSON.stringify(data), {
-            status: 200
-        });
+        return new Response(JSON.stringify(data), { status: 200 });
 
     } catch (error) {
         return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), { status: 500 });
