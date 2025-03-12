@@ -24,7 +24,7 @@ interface AssignmentData {
 
 export default function AssignPage() {
     const [selectedYear, setSelectedYear] = useState<number>(2025);
-    const [selectedTerm, setSelectedTerm] = useState<string>("Spring Break");
+    const [selectedTerm, setSelectedTerm] = useState<string>("Winter Term");
     const [selectedDesk, setSelectedDesk] = useState<string>("jmc");
     const [assignments, setAssignments] = useState<AssignmentData[]>([]);
     const [showLogs, setShowLogs] = useState<Record<number, boolean>>({});
@@ -311,7 +311,8 @@ export default function AssignPage() {
                         <div className="flex justify-center flex-col items-center p-8 border rounded-md bg-gray-50">
                             <p className="text-center text-muted-foreground">You currently have not assigned any shifts for {selectedDesk.toUpperCase()} desk calendar for {selectedTerm} in {selectedYear}.</p>
                             <Button 
-                                className="mt-4" 
+                                variant="default"
+                                className="mt-4 text-white" 
                                 onClick={() => setIsDialogOpen(true)}
                             >
                                 Assign Shifts

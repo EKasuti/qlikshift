@@ -13,7 +13,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } fr
 
 export default function StudentsPage() {
     const [selectedYear, setSelectedYear] = useState<number>(2025);
-    const [selectedTerm, setSelectedTerm] = useState<string>("Spring Term");
+    const [selectedTerm, setSelectedTerm] = useState<string>("Winter Term");
     const [students, setStudents] = useState<Student[]>([]); 
     const [loading, setLoading] = useState<boolean>(false); 
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
