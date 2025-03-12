@@ -58,12 +58,10 @@ function convertExcelTime(timeStr: string): string {
     if (period === 'pm' && hours !== 12) hours += 12;
     if (period === 'am' && hours === 12) hours = 0;
 
-    return `${hours.toString().padStart(2, '0')}:00`;
+    return `${hours.toString().padStart(2, '0')}:00:00`;
 }
 
 function parseTimeSlotHeader(header: string): { day: string; time: string } {
-    console.log(`Parsing time slot header: ${header}`);
-
     const normalizedHeader = header.replace(/\s+/g, ' ').trim();
 
     const match = normalizedHeader.match(/^(\w+)\s+((?:\d+[ap]m|noon|midnight))-?((?:\d+[ap]m|noon|midnight))$/i);
@@ -72,8 +70,6 @@ function parseTimeSlotHeader(header: string): { day: string; time: string } {
     const day = match[1];
     const startTime = convertExcelTime(match[2]);
     const endTime = convertExcelTime(match[3]);
-
-    console.log(`Parsed day: ${day}, startTime: ${startTime}, endTime: ${endTime}`);
 
     return { day, time: `${startTime} - ${endTime}` };
 }

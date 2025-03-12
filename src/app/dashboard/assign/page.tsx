@@ -239,6 +239,7 @@ export default function AssignPage() {
                             variant="default" 
                             onClick={handleAssign}
                             disabled={isAssigning}
+                            className="bg-primary text-white"
                         >
                             {isAssigning ? (
                                 <>

@@ -8,14 +8,14 @@ import { Card } from "@/components/ui/card"
 import { InterimStudent, TermStudent } from "@/types"
 
 const timeSlots = [
-    "08:00 - 10:00",
-    "10:00 - 12:00",
-    "12:00 - 14:00",
-    "14:00 - 16:00",
-    "16:00 - 18:00",
-    "18:00 - 20:00",
-    "20:00 - 22:00",
-    "22:00 - 00:00",
+    "08:00:00 - 10:00:00",
+    "10:00:00 - 12:00:00",
+    "12:00:00 - 14:00:00",
+    "14:00:00 - 16:00:00",
+    "16:00:00 - 18:00:00",
+    "18:00:00 - 20:00:00",
+    "20:00:00 - 22:00:00",
+    "22:00:00 - 00:00:00",
 ]
 
 const interimHours = [
@@ -184,7 +184,7 @@ export default function StudentDetailsPage() {
                                         {days.map((day) => {
                                             const availability = (student as TermStudent).term_student_availability_slots?.find(slot => slot.day_of_week === day && slot.time_slot === time)
                                             return (
-                                                <td key={`${day}-${time}`} className="border px-4 py-2 text-center">
+                                                <td key={`${day}-${time}`} className={`border px-4 py-2 text-center ${availability ? deskColors[availability.scheduled_status.toLowerCase()] : ""}`}>
                                                     {availability ? <span>{availability.scheduled_status}</span> : "Not found"}
                                                 </td>
                                             )
