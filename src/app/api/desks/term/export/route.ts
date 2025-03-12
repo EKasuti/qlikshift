@@ -107,7 +107,7 @@ export async function GET(request: Request) {
             .eq('term_or_break', term)
             .single();
 
-        console.log(deskData);
+        // console.log("DEBUG: deskData", deskData);
         if (deskError) throw deskError;
 
         if (!deskData) {
@@ -134,14 +134,14 @@ export async function GET(request: Request) {
         // 4. We then combine the slots and shifts for easier export
         const combinedData = slotsData.map(slot => ({
             ...slot,
-            interim_shifts: shiftsData.filter(shift =>
+            term_shifts: shiftsData.filter(shift =>
                 shift.term_slot_id === slot.id
             )
         }));
 
-        console.log("DEBUG: combinedData", combinedData);
+        // console.log("DEBUG: combinedData", combinedData);
 
-         // 5. Next we prepare the data for Excel export using helper function prepareExcelData
+        // 5. Next we prepare the data for Excel export using helper function prepareExcelData
         const excelData = prepareExcelData(combinedData);
 
         // 6. Then we create an Excel worksheet and workbook
@@ -150,7 +150,7 @@ export async function GET(request: Request) {
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Term Desk Schedule');
 
         // 7. Finally, we write the workbook to a buffer and create a response with the Excel file
-        const excelBuffer = XLSX.write(workbook, {bookType: 'xlsx', type: 'buffer'});
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
 
         // Create response with Excel file
         const response = new NextResponse(excelBuffer, {
@@ -164,6 +164,6 @@ export async function GET(request: Request) {
         return response;
 
     } catch (error) {
-        return NextResponse.json({error: 'Failed to export term desk schedule', details: String(error)},{ status: 500 });
+        return NextResponse.json({ error: 'Failed to export term desk schedule', details: String(error) }, { status: 500 });
     }
 }
