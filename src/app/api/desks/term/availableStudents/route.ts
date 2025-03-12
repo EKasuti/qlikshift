@@ -14,6 +14,8 @@ export async function GET(request: Request) {
             .select(`*, term_slot:term_slots (*)`)
             .eq('id', shiftId)
             .single();
+        
+        // console.log("DEBUG: shiftDetails", shiftDetails);
 
         if (shiftError || !shiftDetails) {
             console.error('Shift not found or error:', shiftError);
@@ -22,8 +24,8 @@ export async function GET(request: Request) {
 
         const { day_of_week } = shiftDetails.term_slot;
         const { start_time, end_time } = shiftDetails;
-        const time_slot = `${start_time.slice(0, 5)} - ${end_time.slice(0, 5)}`;
-        console.log('Day of week:', day_of_week, 'Time slot:', time_slot);
+        const time_slot = `${start_time} - ${end_time}`;
+        // console.log('Day of week:', day_of_week, 'Time slot:', time_slot);
 
         // Step 2: Get students' availability for the specified day and time slot
         const { data: availabilitySlots, error: availabilityError } = await supabaseAdmin!
@@ -31,7 +33,7 @@ export async function GET(request: Request) {
             .select('term_student_id, availability_status')
             .eq('day_of_week', day_of_week)
             .eq('time_slot', time_slot);
-        console.log('Availability slots:', availabilitySlots);
+        // console.log('Availability slots:', availabilitySlots);
 
         if (availabilityError) {
             console.error('Error fetching availability slots:', availabilityError);
@@ -41,7 +43,7 @@ export async function GET(request: Request) {
         // Step 3: Get ALL student details for available slots WITHOUT filtering by desk and term first
         // This ensures we have complete student data for mapping
         const studentIds = [...new Set(availabilitySlots.map(slot => slot.term_student_id))];
-        console.log('Student IDs:', studentIds);
+        // console.log('Student IDs:', studentIds);
 
         const { data: allStudents, error: studentError } = await supabaseAdmin!
             .from('term_students')
@@ -59,7 +61,7 @@ export async function GET(request: Request) {
             student.jobs && 
             student.jobs.toLowerCase().includes(desk!.toLowerCase())
         );
-        console.log('Filtered student details:', students);
+        // console.log('Filtered student details:', students);
 
         // Combine availability with student details
         const availableFirstChoice = availabilitySlots
@@ -78,7 +80,7 @@ export async function GET(request: Request) {
             })
             .filter(item => item !== null); // Remove null items
         
-        console.log('Available first choice:', availableFirstChoice);
+        // console.log('Available first choice:', availableFirstChoice);
 
         const availableSecondChoice = availabilitySlots
             .filter(slot => slot.availability_status === '2nd Choice')
@@ -96,18 +98,18 @@ export async function GET(request: Request) {
             })
             .filter(item => item !== null); // Remove null items
         
-        console.log('Available second choice:', availableSecondChoice);
+        // console.log('Available second choice:', availableSecondChoice);
 
         // Remove duplicates
         const uniqueFirstChoice = availableFirstChoice.filter((student, index, self) =>
             index === self.findIndex(s => s.student_id === student.student_id)
         );
-        console.log('Unique first choice:', uniqueFirstChoice);
+        // console.log('Unique first choice:', uniqueFirstChoice);
 
         const uniqueSecondChoice = availableSecondChoice.filter((student, index, self) =>
             index === self.findIndex(s => s.student_id === student.student_id)
         );
-        console.log('Unique second choice:', uniqueSecondChoice);
+        // console.log('Unique second choice:', uniqueSecondChoice);
 
         return NextResponse.json({ firstChoice: uniqueFirstChoice, secondChoice: uniqueSecondChoice }, { status: 200 });
     } catch (error) {
