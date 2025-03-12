@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight, Users, UserCheck, Calendar, GraduationCap, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -10,6 +10,7 @@ import { StatsCards, type StatCardData } from "@/components/dashboard/stats-card
 import { AvailableStudent, Interim_Desk, InterimShift, TermDesk, TermShift } from "@/types"
 import { Card } from "@/components/ui/card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { bakerPayload, circPayload, jmcPayload, orozcoPayload } from "@/lib/payload"
 
 const interim_timeSlots = [
     "08:00:00 - 10:00:00",
@@ -260,30 +261,74 @@ function ScheduleTable({ desk, isBreakTerm, selectedDesk, selectedTerm, selected
 export default function DesksPage() {
     const [desks, setDesks] = useState<TermDesk | Interim_Desk[]>([])
     const [selectedYear, setSelectedYear] = useState<number>(2025)
-    const [selectedTerm, setSelectedTerm] = useState<string>("Spring Break")
+    const [selectedTerm, setSelectedTerm] = useState<string>("Winter Term")
     const [selectedDesk, setSelectedDesk] = useState<string>("jmc")
     const isInterim = selectedTerm.endsWith("Break")
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
-  
-    useEffect(() => {
-        async function fetchDesks() {
+    const [isCreatingDesk, setIsCreatingDesk] = useState(false);
+
+    const fetchDesks = useCallback(async () => {
         const response = await fetch(
             isInterim 
-            ? `/api/desks/interim?year=${selectedYear}&term_or_break=${selectedTerm}&desk=${selectedDesk}` 
-            : `/api/desks/term?year=${selectedYear}&term_or_break=${selectedTerm}&desk=${selectedDesk}`
+                ? `/api/desks/interim?year=${selectedYear}&term_or_break=${selectedTerm}&desk=${selectedDesk}` 
+                : `/api/desks/term?year=${selectedYear}&term_or_break=${selectedTerm}&desk=${selectedDesk}`
         );
         if (!response.ok) {
-            console.error('Error fetching desks')
-            return
+            console.error('Error fetching desks');
+            return;
         }
-        const data = await response.json()
-        setDesks(data)
-        }
+        const data = await response.json();
+        setDesks(data);
+    }, [selectedYear, selectedTerm, selectedDesk, isInterim]);
 
+    useEffect(() => {
         fetchDesks()
-    }, [selectedYear, selectedTerm, selectedDesk, isInterim])
+    }, [fetchDesks])
 
+    // Function to handle creating desk
+    const handleCreateDesk = async () => {
+        setIsCreatingDesk(true);
 
+        let payload
+
+        switch (selectedDesk) {
+            case "jmc":
+                payload = {... jmcPayload, term_or_break: selectedTerm, year: selectedYear.toString()}
+                break;
+            case "circ":
+                payload = {... circPayload, term_or_break: selectedTerm, year: selectedYear.toString()}
+                break;
+            case "baker":
+                payload = {... bakerPayload, term_or_break: selectedTerm, year: selectedYear.toString()}
+                break;
+            case "orozco":
+                payload = { ... orozcoPayload, term_or_break: selectedTerm, year: selectedYear.toString()}
+                break;
+            default:
+                throw new Error('Invalid desk selected'); 
+        }
+
+        try {
+            const response = await fetch(isInterim ? `/api/desks/interim` : `/api/desks/term`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to create desk');
+            }
+
+            // Refresh the desk data
+            await fetchDesks();
+        } catch (error){
+            console.error('Create desk error:', error);
+        } finally {
+            setIsCreatingDesk(false);
+        }
+    }
     const handleExportDesk = async () => {
         try {
             const response = await fetch(
@@ -318,7 +363,6 @@ export default function DesksPage() {
             setIsExportDialogOpen(false);
         } catch (error) {
             console.error('Export error:', error);
-            // Optionally show an error toast or alert
         }
     };
 
@@ -435,9 +479,14 @@ export default function DesksPage() {
                     </AlertDialog>
 
                     {/* Button to Add desk */}
-                    <Button variant="outline" className="text-primary border-primary">
-                        Create Desk
-                    </Button>
+                    {!isInterim && 
+                        <Button 
+                            variant="outline" 
+                            className="text-primary border-primary"
+                            onClick={handleCreateDesk}
+                        >
+                        {isCreatingDesk ? 'Creating Desk...' : 'Create Desk'}
+                    </Button>}
                 </div>
             </div>
 
@@ -486,7 +535,7 @@ export default function DesksPage() {
                         <p>
                         {selectedDesk.toUpperCase()} desk is not available for <span className="font-bold">{selectedTerm} {selectedYear}</span>.
                         </p>
-                        <p>Create the desk by clicking &quot;Create Desk&quot; button</p>
+                        {/* <p>Create the desk by clicking &quot;Create Desk&quot; button</p> */}
                     </>
                 )}
             </div>
