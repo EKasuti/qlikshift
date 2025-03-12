@@ -24,7 +24,7 @@ interface AssignmentData {
 
 export default function AssignPage() {
     const [selectedYear, setSelectedYear] = useState<number>(2025);
-    const [selectedTerm, setSelectedTerm] = useState<string>("Winter Term");
+    const [selectedTerm, setSelectedTerm] = useState<string>("Spring Term");
     const [selectedDesk, setSelectedDesk] = useState<string>("jmc");
     const [assignments, setAssignments] = useState<AssignmentData[]>([]);
     const [showLogs, setShowLogs] = useState<Record<number, boolean>>({});
