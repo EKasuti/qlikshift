@@ -1,0 +1,8 @@
+// Split the preferred consecutive hours by half
+
+Divide the max shift by half [Done]
+// Double booking shifts
+// Updating assigned shifts
+// 
+
+// Export to excel
