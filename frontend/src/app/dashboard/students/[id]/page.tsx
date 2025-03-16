@@ -1,7 +1,7 @@
 "use client"
 
 import { useParams, useSearchParams } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect } from "react"
 import { Avatar } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -65,7 +65,7 @@ export default function StudentDetailsPage() {
 
     const fetchData = useCallback(() => {
         fetchSingleStudent(isBreak, id);
-    }, [selectedTerm, fetchSingleStudent, id]);
+    }, [fetchSingleStudent, id, isBreak]);
 
     useEffect(() => {
         fetchData();

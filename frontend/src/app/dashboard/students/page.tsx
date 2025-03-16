@@ -4,7 +4,7 @@ import { StatCardData, StatsCards } from "@/components/dashboard/stats-cards";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { Users, UserCheck, Calendar, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, Filter } from "lucide-react";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
@@ -27,24 +27,16 @@ export default function StudentsPage() {
     const isBreak = selectedTerm.endsWith("Break");
 
     // Data from store
-    const {students, loading, fetchStudents, getTermStudents, getInterimStudents} = useStore();
+    const {students, loading, fetchStudents} = useStore();
 
     const fetchData = useCallback(() => {
        
         fetchStudents(isBreak);
-    }, [selectedTerm, fetchStudents]);
+    }, [fetchStudents, isBreak]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-    
-
-    const allStudents = useMemo(() => {
-        return isBreak 
-            ? getInterimStudents(selectedYear, selectedTerm)
-            : getTermStudents(selectedYear, selectedTerm);
-    }, [selectedYear, selectedTerm, getTermStudents, getInterimStudents]);
-
 
     // Calculate statistics
     const totalStudents = students.length;
