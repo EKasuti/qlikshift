@@ -1,6 +1,6 @@
 export function setCorsHeaders(response: Response): Response {
     const corsHeaders = {
-        "Access-Control-Allow-Origin": "https://qlikshift.vercel.app",
+        "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization"
     };
