@@ -76,7 +76,6 @@ function parseTimeSlotHeader(header: string): { day: string; time: string } {
     return { day, time: `${startTime} - ${endTime}` };
 }
 
-
 // POST function to store Term Students from excel sheet
 export async function POST(request: Request) {
     const origin = request.headers.get('origin');
