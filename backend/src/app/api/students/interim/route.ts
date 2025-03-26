@@ -1,5 +1,6 @@
 import { setCorsHeaders } from '@/lib/cors';
 import { supabaseAdmin } from '@/lib/supabase';
+import { NextResponse } from 'next/server';
 import * as xlsx from 'xlsx';
 
 interface ExcelRow {
@@ -136,6 +137,7 @@ function parseTimeSlotHeader(header: string): { day: string; time: string; date:
 
 // POST function to store Interim Students from excel sheet
 export async function POST(request: Request) {
+    const origin = request.headers.get('origin');
     try {
         if (!supabaseAdmin) throw new Error('Database connection failed');
         console.log('Database connection established.');
@@ -147,7 +149,7 @@ export async function POST(request: Request) {
 
         if (!file || !year || !termOrBreak) {
             console.error('Missing required fields:', { file, year, termOrBreak });
-            return setCorsHeaders(new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 }));
+            return setCorsHeaders(new NextResponse(JSON.stringify({ error: 'Missing required fields' }), { status: 400 }), origin);
         }
 
         const buffer = await file.arrayBuffer();
@@ -160,9 +162,9 @@ export async function POST(request: Request) {
 
         if (timeSlotHeaders.length === 0) {
             console.error('No time slot headers found. Sample headers:', Object.keys(jsonData[0]).slice(0, 10));
-            return setCorsHeaders(new Response(JSON.stringify({
+            return setCorsHeaders(new NextResponse(JSON.stringify({
                 error: 'No time slot headers detected in the Excel file'
-            }), { status: 400 }));
+            }), { status: 400 }), origin);
         }
 
         const students: InterimStudent[] = jsonData.map(row => {
@@ -298,24 +300,25 @@ export async function POST(request: Request) {
             throw slotError;
         }
 
-        return setCorsHeaders(new Response(JSON.stringify({
+        return setCorsHeaders(new NextResponse(JSON.stringify({
             message: 'Import successful for interim students',
             stats: {
                 students: dbStudents.length,
                 slots: availabilitySlots.length
             }
-        }), { status: 200 }));
+        }), { status: 200 }), origin);
 
     } catch (error) {
         console.error('Import error:', error);
-        return setCorsHeaders(new Response(JSON.stringify({
+        return setCorsHeaders(new NextResponse(JSON.stringify({
             error: error instanceof Error ? error.message : 'Unknown error'
-        }), { status: 500 }));
+        }), { status: 500 }), origin);
     }
 }
 
 // GET function
 export async function GET(request: Request) {
+    const origin = request.headers.get('origin');
     try {
         const { searchParams } = new URL(request.url);
         const year = searchParams.get('year');
@@ -343,12 +346,12 @@ export async function GET(request: Request) {
 
         if (error) throw error;
 
-        return setCorsHeaders(new Response(JSON.stringify(data), { status: 200 }));
+        return setCorsHeaders(new NextResponse(JSON.stringify(data), { status: 200 }), origin);
 
     } catch (error) {
         console.error('Retrieval error:', error);
-        return setCorsHeaders(new Response(JSON.stringify({
+        return setCorsHeaders(new NextResponse(JSON.stringify({
             error: error instanceof Error ? error.message : 'Unknown error'
-        }), { status: 500 }));
+        }), { status: 500 }), origin);
     }
 }

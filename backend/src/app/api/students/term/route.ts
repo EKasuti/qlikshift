@@ -1,5 +1,6 @@
 import { setCorsHeaders } from '@/lib/cors';
 import { supabaseAdmin } from '@/lib/supabase';
+import { NextResponse } from 'next/server';
 import * as xlsx from 'xlsx';
 
 // ExcelRow names
@@ -78,9 +79,10 @@ function parseTimeSlotHeader(header: string): { day: string; time: string } {
 
 // POST function to store Term Students from excel sheet
 export async function POST(request: Request) {
+    const origin = request.headers.get('origin');
     // Handle preflight requests
     if (request.method === 'OPTIONS') {
-        return setCorsHeaders(new Response(null, { status: 200 }));
+        return setCorsHeaders(new NextResponse(null, { status: 200 }), origin);
     }
 
     try {
@@ -223,28 +225,30 @@ export async function POST(request: Request) {
 
         if (slotError) throw slotError;
 
-        return setCorsHeaders(new Response(JSON.stringify({
+        return setCorsHeaders(new NextResponse(JSON.stringify({
             message: 'Import successful',
             stats: {
                 students: dbStudents.length,
                 slots: availabilitySlots.length
             }
-        }), { status: 200}));
+        }), { status: 200}), origin);
 
     } catch (error) {
         console.error('Error:', error);
-        return setCorsHeaders( new Response(
+        return setCorsHeaders( new NextResponse(
             JSON.stringify(
                 { error: error instanceof Error ? error.message : 'Unknown error' }), 
                 { status: 500 }
-            ));
+            ), origin);
     }
 }
 
 // GET function to retrieve Term Students
 export async function GET(request: Request) {
+    const origin = request.headers.get('origin');
+
     if (request.method === 'OPTIONS') {
-        return setCorsHeaders(new Response(null, { status: 200}));
+        return setCorsHeaders(new NextResponse(null, { status: 200}), origin);
     }
 
     try {
@@ -266,14 +270,15 @@ export async function GET(request: Request) {
 
         if (error) throw error;
 
-        return setCorsHeaders(new Response(JSON.stringify(data), { status: 200 }));
+        return setCorsHeaders(new NextResponse(JSON.stringify(data), { status: 200 }), origin);
 
     } catch (error) {
-        return setCorsHeaders(new Response(
+        return setCorsHeaders(new NextResponse(
             JSON.stringify(
                 { error: error instanceof Error ? error.message : 'Unknown error' }),
                 { status: 500 }
-            )
+            ),
+            origin
         );
     }
 }

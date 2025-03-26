@@ -1,13 +1,14 @@
-export function setCorsHeaders(response: Response): Response {
-    const corsHeaders = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization"
-    };
+import { NextResponse } from "next/server";
 
-    for (const [key, value] of Object.entries(corsHeaders)) {
-        response.headers.set(key, value);
+export const allowedOrigins = ['https://qlikshift.vercel.app', 'http://localhost:3000'];
+
+export function setCorsHeaders(response: NextResponse, origin: string | null): NextResponse {
+    if (origin && allowedOrigins.includes(origin)) {
+        response.headers.set('Access-Control-Allow-Origin', origin);
     }
-
+    
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     return response;
 }

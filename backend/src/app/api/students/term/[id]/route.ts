@@ -1,7 +1,9 @@
 import { setCorsHeaders } from '@/lib/cors';
 import { supabaseAdmin } from '@/lib/supabase';
+import { NextResponse } from 'next/server';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+    const origin = request.headers.get('origin');
     try {
         if (!supabaseAdmin) throw new Error('Could not connect to database');
 
@@ -15,11 +17,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             .single();
 
         if (error || !student) {
-            return setCorsHeaders(new Response(JSON.stringify({ error: 'Student not found' }), { status: 404 }));
+            return setCorsHeaders(new NextResponse(JSON.stringify({ error: 'Student not found' }), { status: 404 }), origin);
         }
 
-        return setCorsHeaders(new Response(JSON.stringify(student), { status: 200 }));
+        return setCorsHeaders(new NextResponse(JSON.stringify(student), { status: 200 }), origin);
     } catch (error) {
-        return setCorsHeaders(new Response(JSON.stringify({ error: (error as Error).message }), { status: 500 }));
+        return setCorsHeaders(new NextResponse(JSON.stringify({ error: (error as Error).message }), { status: 500 }), origin);
     }
 }
