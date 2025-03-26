@@ -12,54 +12,41 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } fr
 import { useStore } from "@/utils/useStore";
 
 export default function StudentsPage() {
-    const [selectedYear, setSelectedYear] = useState<number>(2025);
-    const [selectedTerm, setSelectedTerm] = useState<string>("Spring Term");
+    const [selectedYear, setSelectedYear] = useState<number>(2020);
+    const [selectedTerm, setSelectedTerm] = useState<string>("Fall Term");
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [sortField, setSortField] = useState<string>('seniority');
 
     // Dialog state
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [file, setFile] = useState<File | null>(null);
-    const [uploadLoading, setUploadLoading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
     const [filter, setFilter] = useState<'all' | 'sub' | 'working' | 'notWorking'>('all');
     const isBreak = selectedTerm.endsWith("Break");
 
     // Data from store
-    const {students, loading, fetchStudents} = useStore();
+    const {
+        // Fetching students
+        fetchingStudents,
+        fetchStudents,
+        getTermStudents, getInterimStudents,
+
+        // Uploading students
+        uploadingStudents,
+        uploadingStudentsError,
+        uploadStudents
+    } = useStore();
 
     const fetchData = useCallback(() => {
-       
         fetchStudents(isBreak);
+
     }, [fetchStudents, isBreak]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-
-    // Calculate statistics
-    const totalStudents = students.length;
-    const averageHoursPerWeek = totalStudents > 0 
-        ? parseFloat((students.reduce((sum, student) => sum + student.preferred_hours_per_week, 0) / totalStudents).toFixed(1)) 
-        : 0;
-    const assignedStudents = students.filter(student => student.assigned_shifts > 0).length;
-
-    const statsData: StatCardData[] = [
-        { title: "Total Students", value: totalStudents, icon: Users, color: "purple" },
-        { title: "Hrs/Week", value: averageHoursPerWeek, icon: Calendar, color: "blue" },
-        { title: "Unassigned Students", value: totalStudents - assignedStudents, icon: Users, color: "orange" },
-        { title: "Assigned Students", value: assignedStudents, icon: UserCheck, color: "green" }
-    ];
-
-    // Function to filter students based on selected filter
-    const filteredStudents = students.filter(student => {
-        if (filter === 'sub') return student.issub && student.isworking;
-        if (filter === 'working') return student.isworking && !student.issub;
-        if (filter === 'notWorking') return !student.isworking;
-        return true; // 'all' case
-    });
-
+    
     // Function to handle file change
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = event.target.files?.[0];
@@ -76,44 +63,28 @@ export default function StudentsPage() {
     };
 
     // Function to handle upload
-    const handleUpload = async () => {
-        if (!file) return;
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
 
-        setUploadLoading(true);
-        setUploadError(null);
-        setUploadSuccess(null);
-
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("year", selectedYear.toString());
-        formData.append("term_or_break", selectedTerm);
-
-        const endpoint = selectedTerm.endsWith("Break")
-            ? `/api/students/interim`
-            : `/api/students/term`;
+        if (!file || !selectedYear || !selectedTerm) {
+            alert('Please fill all fields');
+            return;
+        }
 
         try {
-            const response = await fetch(endpoint, {
-                method: "POST",
-                body: formData,
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to upload students");
+            await uploadStudents(isBreak, file, selectedYear.toString(), selectedTerm);
+            
+            // Reset form after successful upload if needed
+            if (!uploadingStudentsError) {
+                setIsDialogOpen(false);
+                setFile(null);
+                setUploadError(null);
+                // Refresh the students list
+                fetchData();
             }
-
-            const result = await response.json();
-            setUploadSuccess(result.message);
-            setFile(null);
-            setIsDialogOpen(false); 
-
-            // fetchStudents()
-        } catch (err) {
-            setUploadError(err instanceof Error ? err.message : "Unknown error");
-            setFile(null);
-        } finally {
-            setUploadLoading(false);
-            setUploadSuccess(null)
+        } catch (error) {
+            console.error('Upload failed:', error);
+            setUploadError(uploadingStudentsError || "Failed to upload students");
         }
     };
 
@@ -122,6 +93,33 @@ export default function StudentsPage() {
         setSortField(field);
         setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
     };
+
+    // Get students based on selected year and term
+    const displayStudents = isBreak
+        ? getInterimStudents(selectedYear, selectedTerm)
+        : getTermStudents(selectedYear, selectedTerm);
+
+    // Function to filter students based on selected filter
+    const filteredStudents = displayStudents.filter(student => {
+        if (filter === 'sub') return student.issub && student.isworking;
+        if (filter === 'working') return student.isworking && !student.issub;
+        if (filter === 'notWorking') return !student.isworking;
+        return true; // 'all' case
+    });
+
+    // Calculate statistics
+    const totalStudents = displayStudents.length;
+    const averageHoursPerWeek = totalStudents > 0 
+        ? parseFloat((displayStudents.reduce((sum, student) => sum + student.preferred_hours_per_week, 0) / totalStudents).toFixed(1)) 
+        : 0;
+    const assignedStudents = displayStudents.filter(student => student.assigned_shifts > 0).length;
+
+    const statsData: StatCardData[] = [
+        { title: "Total Students", value: totalStudents, icon: Users, color: "purple" },
+        { title: "Hrs/Week", value: averageHoursPerWeek, icon: Calendar, color: "blue" },
+        { title: "Unassigned Students", value: totalStudents - assignedStudents, icon: Users, color: "orange" },
+        { title: "Assigned Students", value: assignedStudents, icon: UserCheck, color: "green" }
+    ];
 
     return (
         <div className="flex flex-col gap-4">
@@ -228,11 +226,11 @@ export default function StudentsPage() {
                     <input type="file" accept=".xlsx, .xls" onChange={handleFileChange} />
                     <Button 
                         variant="default" 
-                        onClick={handleUpload} 
-                        disabled={uploadLoading || !file}
+                        onClick={handleSubmit} 
+                        disabled={uploadingStudents || !file}
                         className="text-white"
                     >
-                        {uploadLoading ? "Uploading..." : "Upload Students"}
+                        {uploadingStudents ? "Uploading..." : "Upload Students"}
                     </Button>
                     {uploadError && <p className="text-red-500">{uploadError}</p>}
                     {uploadSuccess && <p className="text-green-500">{uploadSuccess}</p>}
@@ -243,7 +241,7 @@ export default function StudentsPage() {
             </Dialog>
 
             {/* Students table data */}
-            {loading ? (
+            {fetchingStudents ? (
                 <p>Loading students...</p>
             ) : filteredStudents.length > 0 ? (
                 <Card className="p-6">

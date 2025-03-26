@@ -60,7 +60,7 @@ export default function StudentDetailsPage() {
     const selectedTerm = searchParams.get('selectedTerm') || ''
     const selectedYear = searchParams.get('selectedYear') || ''
     // Data from store
-    const {student, loading, fetchSingleStudent} = useStore();
+    const {student, fetchingSingleStudent, fetchSingleStudent} = useStore();
     const isBreak = selectedTerm.endsWith("Break")
 
     const fetchData = useCallback(() => {
@@ -89,7 +89,7 @@ export default function StudentDetailsPage() {
         })
     }
 
-    if (loading) return <p>Loading...</p>
+    if (fetchingSingleStudent) return <p>Loading...</p>
     if (!student) return <p>Student not found.</p>
 
     return (

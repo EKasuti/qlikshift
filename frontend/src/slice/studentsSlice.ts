@@ -1,4 +1,4 @@
-import { fetchSingleStudent, fetchStudents } from "@/apis/studentsApi";
+import { fetchSingleStudent, fetchStudents, handleStudentsUpload } from "@/apis/studentsApi";
 import { InterimStudent, TermStudent } from "@/types/studentType";
 import { StateCreator } from "zustand";
 
@@ -6,40 +6,60 @@ export type Student = TermStudent | InterimStudent;
 
 // State interface
 export interface StudentsState {
+    // Fetching all students
+    fetchingStudents: boolean;
+    fetchingStudentsError: string | null;
     students: Student[];
-    student: Student | null;
-    loading: boolean;
-    error: string | null;
     fetchStudents: (isBreak: boolean) => Promise<void>;
-    fetchSingleStudent: (isBreak: boolean, studentId: string) => Promise<void>;
     getTermStudents: (year: number, term: string) => Student[];
     getInterimStudents: (year: number, term: string) => Student[];
+
+    // Fetching a single student
+    fetchingSingleStudent: boolean;
+    fetchingSingleStudentError: string | null;
+    student: Student | null;
+    fetchSingleStudent: (isBreak: boolean, studentId: string) => Promise<void>;
+
+    // Uploading Students
+    uploadingStudents: boolean;
+    uploadingStudentsError: string | null;
+    uploadStudents: (isBreak: boolean, file: File, year: string, term_or_break: string) => Promise<void>;
 }
 
 export const StudentsSlice: StateCreator<StudentsState> = (set, get) => {
     return {
+        // Fetching all students
+        fetchingStudents: false,
+        fetchingStudentsError: null,
         students: [],
-        student: null,
-        loading: false,
-        error: null,
 
+        // Fetching single student
+        fetchingSingleStudent: false,
+        fetchingSingleStudentError: null,
+        student: null,
+        
+        // Uploading students
+        uploadingStudents: false,
+        uploadingStudentsError: null,
+
+        // Fetching all students
         fetchStudents: async (isBreak: boolean) => {
             try {
-                set({ loading: true, error: null });
+                set({ fetchingStudents: true, fetchingStudentsError: null });
                 const response = await fetchStudents({ isBreak });
                 
                 set((state) => ({
                     ...state,
                     students: response,
-                    loading: false
+                    fetchingStudents: false
                 }));
             } catch (error) {
                 console.error(`Couldn't fetch students. ${error}`);
                 set((state) => ({
                     ...state,
                     students: [],
-                    loading: false,
-                    error: error instanceof Error ? error.message : 'Failed to fetch students'
+                    fetchingStudents: false,
+                    fetchingStudentsError: error instanceof Error ? error.message : 'Failed to fetch students'
                 }));
             }
         },
@@ -47,13 +67,13 @@ export const StudentsSlice: StateCreator<StudentsState> = (set, get) => {
         // Fetch a single student
         fetchSingleStudent: async (isBreak: boolean, studentId: string) => {
             try {
-                set({ loading: true, error: null });
+                set({ fetchingSingleStudent: true, fetchingSingleStudentError: null });
                 const response = await fetchSingleStudent({ isBreak, studentId });
             
                 set((state) => ({
                     ...state,
                     student: response,
-                    loading: false
+                    fetchingSingleStudent: false
                 }));
                
             } catch (error) {
@@ -61,28 +81,59 @@ export const StudentsSlice: StateCreator<StudentsState> = (set, get) => {
                 set((state) => ({
                     ...state,
                     student: null,
-                    loading: false,
-                    error: error instanceof Error ? error.message : 'Failed to fetch single student'
+                    fetchingSingleStudent: false,
+                    fetchingSingleStudentError: error instanceof Error ? error.message : 'Failed to fetch single student'
                 }));
             }
         },
 
         // Selector to get term students for a specific year and term
         getTermStudents: (year: number, term: string) => {
-            return get().students.filter(student => 
-                student.year === year && 
-                student.term_or_break === term && 
+            const students = get().students;
+            const result = students.filter(student => 
+                Number(student.year) === year && 
+                student.term_or_break.toLowerCase() === term.toLowerCase() && 
                 'term_student_availability_slots' in student
-            ) as TermStudent[];
+            );
+            return result as TermStudent[];
         },
 
         // Selector to get interim students for a specific year and term
         getInterimStudents: (year: number, term: string) => {
-            return get().students.filter(student => 
-                student.year === year && 
-                student.term_or_break === term && 
+            const students = get().students;
+            return students.filter(student => 
+                Number(student.year) === year && 
+                student.term_or_break.toLowerCase() === term.toLowerCase() && 
                 'interim_student_availability_slots' in student
             ) as InterimStudent[];
+        },
+
+        // Uploading students
+        uploadStudents: async (isBreak: boolean, file: File, year: string, term_or_break: string) => {
+            try {
+                set({ uploadingStudents: true, uploadingStudentsError: null });
+                const response = await handleStudentsUpload({ isBreak, file, year, term_or_break });
+              
+                if (response.error) {
+                    set({
+                        uploadingStudents: false,
+                        uploadingStudentsError: response.error
+                    });
+                    return;
+                }
+
+                await get().fetchStudents(isBreak);
+
+                set({
+                    uploadingStudents: false,
+                    uploadingStudentsError: null
+                });
+            } catch (error) {
+                set({
+                    uploadingStudents: false,
+                    uploadingStudentsError: error instanceof Error ? error.message : 'Failed to upload students'
+                });
+            }
         }
     };
 };
