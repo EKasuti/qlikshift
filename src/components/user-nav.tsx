@@ -1,17 +1,21 @@
 "use client"
+
 import { LogOut } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useUser } from "@/contexts/user-context"
+import { useStore } from "@/utils/useStore"
+import { useEffect } from "react"
 
 export function UserNav() {
-    const { user, isLoading } = useUser()
+    const { fetchingUser, user, fetchUser } = useStore();
     const router = useRouter()
-    const supabase = createClientComponentClient()
+
+    useEffect(() => {
+        fetchUser();
+    }, [fetchUser])
     
     const getInitials = () => {
-        if (isLoading) return "--"
+        if (fetchingUser) return "--"
         if (!user) return "--"
         
         // Handle Undefined values
@@ -21,16 +25,8 @@ export function UserNav() {
     }
 
     const handleLogout = async () => {
-        try {
-            const { error } = await supabase.auth.signOut()
-            
-            if (error) throw error
-
-            router.refresh()
-            router.push('/login')
-        } catch (error) {
-            console.error('Error logging out:', error)
-        }
+        localStorage.removeItem("accessToken");
+        router.push('/login')
     }
 
     return (
