@@ -93,7 +93,7 @@ export const fetchUserDetails = async () => {
     } catch (error) {
         if (error instanceof Error && error.message === 'No authentication token found') {
             // Redirect to login or handle unauthenticated state
-            window.location.href = '/auth/login';
+            window.location.href = '/login';
         }
         throw error;
     }
