@@ -1,4 +1,4 @@
-import { fetchSingleStudent, fetchStudents, handleStudentsUpload } from "@/apis/studentsApi";
+import { fetchSingleStudent, fetchStudents, handleStudentsUpload } from "@/apis/studentApis";
 import { InterimStudent, TermStudent } from "@/types/studentType";
 import { StateCreator } from "zustand";
 

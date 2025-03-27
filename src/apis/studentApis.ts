@@ -45,7 +45,5 @@ export const handleStudentsUpload = async ({ isBreak, file, year, term_or_break 
         return response.json();
     } catch (error) {
         console.error(error);   
-        
-
     }
 }
