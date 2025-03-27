@@ -7,65 +7,43 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
-
-// Assignment data interface
-interface AssignmentData {
-    id: number;
-    year: string;
-    term_or_break: string;
-    desk_name: string;
-    round_number: number;
-    set_to_max_shifts: boolean;
-    shifts_to_assign: number;
-    consider_preferred_desk: boolean;
-    log_summary: string;
-    created_at: string;
-}
+import { useStore } from "@/utils/useStore";
+import { AssignmentPayload } from "@/types/assignmentType";
 
 export default function AssignPage() {
     const [selectedYear, setSelectedYear] = useState<number>(2025);
     const [selectedTerm, setSelectedTerm] = useState<string>("Spring Term");
     const [selectedDesk, setSelectedDesk] = useState<string>("jmc");
-    const [assignments, setAssignments] = useState<AssignmentData[]>([]);
     const [showLogs, setShowLogs] = useState<Record<number, boolean>>({});
-    const [loading, setLoading] = useState<boolean>(false);
-    const [isAssigning, setIsAssigning] = useState<boolean>(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [setToMaxShifts, setSetToMaxShifts] = useState<boolean>(false);
     const [shiftsToAssign, setShiftsToAssign] = useState(1);
     const [considerPreferredDesk, setConsiderPreferredDesk] = useState(false);
 
-    // Function to fetch assignments - using useCallback to memoize the function
-    const fetchAssignments = useCallback(async () => {
-        setLoading(true);
-        try {
-            const endpoint = selectedTerm.endsWith("Break") 
-                ? `/api/assign/interim?year=${selectedYear}&term_or_break=${selectedTerm}&desk=${selectedDesk}`
-                : `/api/assign/term?year=${selectedYear}&term_or_break=${selectedTerm}&desk=${selectedDesk}`;
-                
-            const response = await fetch(endpoint);
-            if (!response.ok) {
-                throw new Error(`Error fetching assignments: ${response.status}`);
-            }
-            const data: AssignmentData[] = await response.json();
-            setAssignments(data);
-        } catch (error) {
-            console.error("Error fetching assignments:", error);
-        } finally {
-            setLoading(false);
-        }
-    }, [selectedYear, selectedTerm, selectedDesk]);
+    const { 
+        // Fetching assignments
+        assignments, 
+        fetchingAssignments, 
+        handleFetchAssignments,  
 
-    // Fetch assignments when selection changes
+        // Assigning shifts
+        assigningShifts,
+        handleAssignShift,
+        
+    } = useStore()
+    const isBreak = selectedTerm.includes("Break");
+
+    const fetchData = useCallback(() => {
+        handleFetchAssignments(isBreak, selectedYear.toString(), selectedTerm, selectedDesk);
+    }, [handleFetchAssignments, isBreak, selectedYear, selectedTerm, selectedDesk]);
+
     useEffect(() => {
-        fetchAssignments();
-    }, [fetchAssignments]);
+        fetchData();
+    }, [fetchData]);
 
     // Handle assigning shifts
     const handleAssign = async () => {
-        setIsAssigning(true);
-        
-        const newAssignment = {
+        const assignmentPayload: AssignmentPayload = {
             desk_name: selectedDesk,
             year: selectedYear.toString(),
             term_or_break: selectedTerm,
@@ -75,39 +53,16 @@ export default function AssignPage() {
             consider_preferred_desk: considerPreferredDesk,
         };
         
-        const endpoint = selectedTerm.endsWith("Break") 
-            ? "/api/assign/interim" 
-            : "/api/assign/term";
-
         try {
-            const response = await fetch(endpoint, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(newAssignment),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to assign shifts: ${response.status}`);
-            }
-
-            // Get the result and re-fetch assignments
-            const result = await response.json();
-            console.log("Assignment successful:", result);
-            
-            // Re-fetch the assignments to get the updated list with logs
-            await fetchAssignments();
+            await handleAssignShift(isBreak, assignmentPayload);
             
             // Reset dialog form
             setSetToMaxShifts(false);
             setShiftsToAssign(1);
             setConsiderPreferredDesk(false);
-            
         } catch (error) {
             console.error("Error assigning shifts:", error);
         } finally {
-            setIsAssigning(false);
             setIsDialogOpen(false);
         }
     };
@@ -134,7 +89,7 @@ export default function AssignPage() {
                         size="icon"
                         className="text-white"
                         onClick={() => setSelectedYear(prev => prev - 1)}
-                        disabled={loading}
+                        disabled={fetchingAssignments}
                     >
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
@@ -145,7 +100,7 @@ export default function AssignPage() {
                         size="icon"
                         className="bg-[#d9d9d9]"
                         onClick={() => setSelectedYear(prev => prev + 1)}
-                        disabled={loading}
+                        disabled={fetchingAssignments}
                     >
                         <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -154,7 +109,7 @@ export default function AssignPage() {
                     <Select 
                         defaultValue={selectedTerm} 
                         onValueChange={setSelectedTerm}
-                        disabled={loading}
+                        disabled={fetchingAssignments}
                     >
                         <SelectTrigger className="w-[180px] bg-white">
                             <SelectValue placeholder="Select term" />
@@ -175,7 +130,7 @@ export default function AssignPage() {
                     variant="outline" 
                     className="text-primary border-primary"
                     onClick={() => setIsDialogOpen(true)}
-                    disabled={loading}
+                    disabled={fetchingAssignments}
                 >
                     Assign
                 </Button>
@@ -204,7 +159,7 @@ export default function AssignPage() {
                                 id="setToMaxShifts" 
                                 checked={setToMaxShifts}
                                 onChange={(e) => setSetToMaxShifts(e.target.checked)}
-                                disabled={isAssigning}
+                                disabled={assigningShifts}
                             />
                             <label htmlFor="setToMaxShifts" className="ml-2">Set to Max Shifts</label>
                         </div>
@@ -219,7 +174,7 @@ export default function AssignPage() {
                                 value={shiftsToAssign}
                                 className="border rounded-lg p-2"
                                 onChange={(e) => setShiftsToAssign(Number(e.target.value))}
-                                disabled={isAssigning}
+                                disabled={assigningShifts}
                             />
                         </div>
 
@@ -230,7 +185,7 @@ export default function AssignPage() {
                                 id="considerPreferredDesk"
                                 checked={considerPreferredDesk}
                                 onChange={(e) => setConsiderPreferredDesk(e.target.checked)}
-                                disabled={isAssigning}
+                                disabled={assigningShifts}
                             />
                             <label htmlFor="considerPreferredDesk" className="ml-2">Consider Preferred Desk</label>
                         </div>
@@ -238,10 +193,10 @@ export default function AssignPage() {
                         <Button 
                             variant="default" 
                             onClick={handleAssign}
-                            disabled={isAssigning}
+                            disabled={assigningShifts}
                             className="bg-primary text-white"
                         >
-                            {isAssigning ? (
+                            {assigningShifts ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     Assigning...
@@ -266,7 +221,7 @@ export default function AssignPage() {
                     <TabsTrigger 
                         value="jmc" 
                         className="bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:uppercase"
-                        disabled={loading}
+                        disabled={fetchingAssignments}
                     >
                         JMC
                     </TabsTrigger>
@@ -274,7 +229,7 @@ export default function AssignPage() {
                     <TabsTrigger 
                         value="circ"
                         className="bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:uppercase"
-                        disabled={loading}
+                        disabled={fetchingAssignments}
                     >
                         Circ
                     </TabsTrigger>
@@ -282,7 +237,7 @@ export default function AssignPage() {
                     <TabsTrigger 
                         value="baker"
                         className="bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:uppercase"
-                        disabled={loading}
+                        disabled={fetchingAssignments}
                     >
                         Baker
                     </TabsTrigger>
@@ -290,15 +245,15 @@ export default function AssignPage() {
                     <TabsTrigger 
                         value="orozco"
                         className="bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-bold data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:uppercase"
-                        disabled={loading}
+                        disabled={fetchingAssignments}
                     >
                         Orozco
                     </TabsTrigger>
                 </TabsList>
             </Tabs>
 
-            {/* Loading State */}
-            {loading && (
+            {/* fetchingAssignments}State */}
+            {fetchingAssignments && (
                 <div className="flex justify-center items-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     <span className="ml-2">Loading assignments...</span>
@@ -306,7 +261,7 @@ export default function AssignPage() {
             )}
 
             {/* Assignments */}
-            {!loading && (
+            {!fetchingAssignments && (
                 <div>
                     {assignments.length === 0 ? (
                         <div className="flex justify-center flex-col items-center p-8 border rounded-md bg-gray-50">

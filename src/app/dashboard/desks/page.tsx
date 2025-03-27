@@ -250,7 +250,7 @@ function ScheduleTable({ desk, isBreakTerm, selectedDesk, selectedTerm, selected
 }
 
 export default function DesksPage() {
-    const [selectedYear, setSelectedYear] = useState<number>(2020)
+    const [selectedYear, setSelectedYear] = useState<number>(2025)
     const [selectedTerm, setSelectedTerm] = useState<string>("Spring Term")
     const [selectedDesk, setSelectedDesk] = useState<string>("jmc")
     const isInterim = selectedTerm.endsWith("Break")
