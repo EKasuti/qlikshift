@@ -1,20 +1,10 @@
 import { PublicNav } from '@/components/public-nav'
 import { Button } from '@/components/ui/button'
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
-import { redirect } from "next/navigation"
 import { Play } from "lucide-react"
 import Image from 'next/image'
 import landingImage from "../images/desk_light.png"
 
 export default async function Home() {
-    const supabase = createServerComponentClient({ cookies })
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (session) {
-        redirect("/dashboard")
-    }
-
     return (
         <div className="min-h-screen bg-white">
             <PublicNav />
