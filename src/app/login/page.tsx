@@ -21,10 +21,8 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const result = await Login(email, password);
-            console.log("Login success:", result);
+            await Login(email, password);
 
-            
             router.push("/dashboard");
         } catch (error) {
             console.error("Login error:", error);
