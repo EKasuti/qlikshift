@@ -11,6 +11,7 @@ import { Login, SignUp } from "@/apis/authApis"
 
 export default function SignupPage() {
     // Will add signup logic later
+    const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
@@ -24,7 +25,7 @@ export default function SignupPage() {
 
         try {
             // Create a new user
-            await SignUp(email, password);
+            await SignUp(username, email, password);
 
             // Login the user
             await Login(email, password);
@@ -42,6 +43,19 @@ export default function SignupPage() {
     return (
         <AuthLayout heading="Create a new account" subheading="Assign shifts with ease & confidence">
             <form className="space-y-6" onSubmit={handleSignUp}>
+                {/* Username */}
+                <div className="space-y-2">
+                    <Label htmlFor="username"> Username </Label>
+                    <Input 
+                        id="username" 
+                        type="text" 
+                        placeholder="Enter your username" 
+                        required className="bg-white" 
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                    />
+                </div>
+                
                 {/* Email */}
                 <div className="space-y-2">
                     <Label htmlFor="email" > Email </Label>
