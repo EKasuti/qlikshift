@@ -19,13 +19,13 @@ export function UserNav() {
         if (!user) return "--"
         
         // Handle Undefined values
-        return user.username?.substring(0, 2).toUpperCase() || 
-               user.email?.substring(0, 2).toUpperCase() || 
-               "--"
+        return user.email?.substring(0, 2).toUpperCase() || "--"
     }
 
     const handleLogout = async () => {
-        localStorage.removeItem("accessToken");
+        localStorage.removeItem('token');
+        localStorage.removeItem('token_expiry');
+        document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         router.push('/login')
     }
 
