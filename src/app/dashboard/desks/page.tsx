@@ -260,6 +260,8 @@ export default function DesksPage() {
     const isBreak = selectedTerm.endsWith("Break");
     // Fetch desks (from Zustand store)
     const {
+        // User
+        isAdmin,
         // Fetching desks
         desk,
         fetchingDesk,
@@ -441,6 +443,7 @@ export default function DesksPage() {
                             variant="outline" 
                             className="text-primary border-primary"
                             onClick={handleCreateDesk}
+                            disabled={creatingTermDesk || !isAdmin}
                         >
                         {creatingTermDesk ? 'Creating Desk...' : 'Create Desk'}
                     </Button>}
