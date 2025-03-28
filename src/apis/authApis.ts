@@ -1,4 +1,4 @@
-import { config } from "@/config/config"
+import { config } from "@/config/config";
 
 // Login Function
 export const Login = async (email: string, password: string) => {
@@ -9,7 +9,7 @@ export const Login = async (email: string, password: string) => {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ email, password }),
-        })
+        });
 
         const data = await response.json();
 
@@ -18,24 +18,24 @@ export const Login = async (email: string, password: string) => {
             throw new Error(data.error || response.statusText);
         }
 
-        // Store in localStorage for API requests
-        if (data.session) {
-            localStorage.setItem('access_token', data.session.access_token);
-            localStorage.setItem('refresh_token', data.session.refresh_token);
-            localStorage.setItem('token_expiry', data.session.expires_at.toString());
-            localStorage.setItem('user', JSON.stringify(data.user));
+        // Store token and user data
+        if (data.token) {
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('token_expiry', data.expires_at.toString());
+            // localStorage.setItem('user', JSON.stringify(data.user));
             
-            document.cookie = `auth_token=${data.session.access_token}; path=/; max-age=${data.session.expires_in}; SameSite=Lax`;
+            // Set cookie if needed (remove if not using)
+            document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
         }
         
         return data;
     } catch (error) {
         throw error;
     }
-}
+};
 
 // Signup Function
-export const SignUp = async (email: string, password: string) => {
+export const SignUp = async (username: string, email: string, password: string) => {
     try {
         const response = await fetch(`${config.apiUrl}/auth/signup`, {
             method: 'POST',
@@ -43,8 +43,9 @@ export const SignUp = async (email: string, password: string) => {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ 
-                email: email, 
-                password: password
+                username,
+                email, 
+                password
             })
         });
 
@@ -58,12 +59,12 @@ export const SignUp = async (email: string, password: string) => {
     } catch (error) {
         throw error;
     }
-}
+};
 
-// User Details
+// Fetch User Details
 export const fetchUserDetails = async () => {
     try {
-        const token = localStorage.getItem('access_token');
+        const token = localStorage.getItem('token');
         
         if (!token) {
             throw new Error('No authentication token found');
@@ -71,16 +72,20 @@ export const fetchUserDetails = async () => {
         
         // Check if token is expired
         const tokenExpiry = localStorage.getItem('token_expiry');
-        if (tokenExpiry && Date.now() > parseInt(tokenExpiry) * 1000) {
-            // Token expired, try to refresh before proceeding
-            await refreshToken();
+        if (tokenExpiry && Date.now() > parseInt(tokenExpiry)) {
+            // Token expired, clear storage and redirect
+            localStorage.removeItem('token');
+            localStorage.removeItem('token_expiry');
+            // localStorage.removeItem('user');
+            window.location.href = '/login';
+            return;
         }
         
         const response = await fetch(`${config.apiUrl}/auth`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                'Authorization': `Bearer ${token}`
             }
         });
   
@@ -92,47 +97,17 @@ export const fetchUserDetails = async () => {
         return data;
     } catch (error) {
         if (error instanceof Error && error.message === 'No authentication token found') {
-            // Redirect to login or handle unauthenticated state
             window.location.href = '/login';
         }
         throw error;
     }
 };
 
-// Function to refresh the token
-async function refreshToken() {
-    const refreshToken = localStorage.getItem('refresh_token');
-    
-    if (!refreshToken) {
-      throw new Error('No refresh token found');
-    }
-    
-    try {
-      const response = await fetch(`${config.apiUrl}/auth/refresh`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to refresh token');
-      }
-      
-      localStorage.setItem('access_token', data.session.access_token);
-      localStorage.setItem('refresh_token', data.session.refresh_token);
-      localStorage.setItem('token_expiry', data.session.expires_at.toString());
-      
-      return data.session.access_token;
-    } catch (error) {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('token_expiry');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-      throw error;
-    }
-}
+// Logout Function
+export const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('token_expiry');
+    // localStorage.removeItem('user');
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    window.location.href = '/login';
+};
