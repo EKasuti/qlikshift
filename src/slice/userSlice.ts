@@ -1,22 +1,12 @@
 import { StateCreator } from "zustand";
-
 import { fetchUserDetails } from "@/apis/authApis";
-
-// User interface
-export interface User {
-    id: string;
-    email: string;
-    username: string | null;
-    created_at: string;
-    role: string;
-    email_confirmed_at: string;
-    last_sign_in_at: string;
-}
+import { User } from "@/types/userType";
 
 // User slice state
 export interface UserState {
     fetchingUser: boolean;
     fetchingUserError: string | null;
+    isAdmin: boolean;
     user: User | null;
     fetchUser: () => Promise<void>;
 }
@@ -26,19 +16,27 @@ export const UserSlice: StateCreator<UserState> = (set) => ({
     user: null,
     fetchingUser: false,
     fetchingUserError: null,
+    isAdmin: false,
 
     fetchUser: async () => {
         try {
-        const response = await fetchUserDetails();
+            set({fetchingUser: true, fetchingUserError: null });
+            const response = await fetchUserDetails();
 
-        set(() => ({
-            user: response.user,
-        }));
+            set((state) => ({
+                ...state,
+                user: response.user,
+                isAdmin: response?.user?.is_super_admin || false,
+                fetchingUser: false,
+            }));
+
         } catch (error) {
-        console.error(`Couldn't fetch user info: ${error}`);
-        set(() => ({
-            user: null,
-        }));
+            console.error(`Couldn't fetch user info: ${error}`);
+            set((state) => ({
+                ...state,
+                fetchingUser: false,
+                fetchingUserError: error as string,
+            }));
         }
     },
 });
