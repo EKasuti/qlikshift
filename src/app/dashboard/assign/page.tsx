@@ -21,6 +21,8 @@ export default function AssignPage() {
     const [considerPreferredDesk, setConsiderPreferredDesk] = useState(false);
 
     const { 
+        // User
+        isAdmin,
         // Fetching assignments
         assignments, 
         fetchingAssignments, 
@@ -130,7 +132,7 @@ export default function AssignPage() {
                     variant="outline" 
                     className="text-primary border-primary"
                     onClick={() => setIsDialogOpen(true)}
-                    disabled={fetchingAssignments}
+                    disabled={fetchingAssignments || !isAdmin}
                 >
                     Assign
                 </Button>
