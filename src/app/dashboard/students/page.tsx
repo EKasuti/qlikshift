@@ -27,6 +27,8 @@ export default function StudentsPage() {
 
     // Data from store
     const {
+        // User
+        isAdmin,
         // Fetching students
         fetchingStudents,
         fetchStudents,
@@ -107,12 +109,30 @@ export default function StudentsPage() {
         return true; // 'all' case
     });
 
+    // Sort the students based on the selected field and order
+    const sortedStudents = [...filteredStudents].sort((a, b) => {
+        if (sortField === 'preferred_name') {
+            return sortOrder === 'asc' 
+                ? a.preferred_name.localeCompare(b.preferred_name)
+                : b.preferred_name.localeCompare(a.preferred_name);
+        } else if (sortField === 'seniority') {
+            return sortOrder === 'asc' 
+                ? a.seniority - b.seniority
+                : b.seniority - a.seniority;
+        } else if (sortField === 'assigned_shifts') {
+            return sortOrder === 'asc' 
+                ? a.assigned_shifts - b.assigned_shifts
+                : b.assigned_shifts - a.assigned_shifts;
+        }
+        return 0;
+    });
+
     // Calculate statistics
-    const totalStudents = displayStudents.length;
+    const totalStudents = filteredStudents.length;
     const averageHoursPerWeek = totalStudents > 0 
-        ? parseFloat((displayStudents.reduce((sum, student) => sum + student.preferred_hours_per_week, 0) / totalStudents).toFixed(1)) 
+        ? parseFloat((filteredStudents.reduce((sum, student) => sum + student.preferred_hours_per_week, 0) / totalStudents).toFixed(1)) 
         : 0;
-    const assignedStudents = displayStudents.filter(student => student.assigned_shifts > 0).length;
+    const assignedStudents = filteredStudents.filter(student => student.assigned_shifts > 0).length;
 
     const statsData: StatCardData[] = [
         { title: "Total Students", value: totalStudents, icon: Users, color: "purple" },
@@ -204,7 +224,12 @@ export default function StudentsPage() {
                         </SelectContent>
                     </Select>
                 </div>
-                <Button variant="outline" className="text-primary border-primary" onClick={() => setIsDialogOpen(true)}>
+                <Button 
+                    variant="outline" 
+                    className="text-primary border-primary" 
+                    onClick={() => setIsDialogOpen(true)}
+                    disabled={!isAdmin}
+                >
                     Upload File
                 </Button>
             </div>
@@ -247,14 +272,23 @@ export default function StudentsPage() {
                 <Card className="p-6">
                     <div className="overflow-x-auto">
                         {/* Table Title */}
-                        <p className="text-center mb-2 font-bold text-lg">Students for {selectedTerm} {selectedYear}</p>
+                        <p className="text-center font-bold text-lg">Students for {selectedTerm} {selectedYear}</p>
+                        <p className="text-center mb-2 ">
+                           (Students can be sorted based on Name, Seniority and Shifts)
+                        </p>
                         
                         <table className="w-full border-collapse">
                             {/* Table Head */}
                             <thead className="bg-[#F5F5F5]">
                                 <tr>
                                     <th className="p-2 rounded-tl-lg bg-primary text-white">Id</th>
-                                    <th className="border-l p-2 text-start">Name</th>
+                                    <th 
+                                        className="border-l p-2 text-start cursor-pointer" 
+                                        onClick={() => handleSort('preferred_name')}
+                                    >
+                                        Name
+                                        {sortField === 'preferred_name' && (sortOrder === 'asc' ? <ArrowUp className="inline h-4 w-4" /> : <ArrowDown className="inline h-4 w-4" />)}
+                                    </th>
                                     <th className="border-l p-2 text-start">Email</th>
                                     <th className="border-l p-2 text-start">Availability</th>
                                     <th className="border-l p-2 text-start">Jobs</th>
@@ -275,7 +309,7 @@ export default function StudentsPage() {
 
                             {/* Table Body */}
                             <tbody>
-                                {filteredStudents.map((student, index) => (
+                                {sortedStudents.map((student, index) => (
                                     <tr key={student.id} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                                         <td className="border p-2">{index + 1}</td>
                                         <td className="border p-2 text-start">
