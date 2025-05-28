@@ -13,7 +13,7 @@ import { useStore } from "@/utils/useStore";
 
 export default function StudentsPage() {
     const [selectedYear, setSelectedYear] = useState<number>(2025);
-    const [selectedTerm, setSelectedTerm] = useState<string>("Spring Term");
+    const [selectedTerm, setSelectedTerm] = useState<string>("Summer Break");
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [sortField, setSortField] = useState<string>('seniority');
 

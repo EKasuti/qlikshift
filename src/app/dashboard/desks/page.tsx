@@ -251,7 +251,7 @@ function ScheduleTable({ desk, isBreakTerm, selectedDesk, selectedTerm, selected
 
 export default function DesksPage() {
     const [selectedYear, setSelectedYear] = useState<number>(2025)
-    const [selectedTerm, setSelectedTerm] = useState<string>("Spring Term")
+    const [selectedTerm, setSelectedTerm] = useState<string>("Summer Break")
     const [selectedDesk, setSelectedDesk] = useState<string>("jmc")
     const isInterim = selectedTerm.endsWith("Break")
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)

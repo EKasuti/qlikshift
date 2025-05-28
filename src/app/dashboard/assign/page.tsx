@@ -12,7 +12,7 @@ import { AssignmentPayload } from "@/types/assignmentType";
 
 export default function AssignPage() {
     const [selectedYear, setSelectedYear] = useState<number>(2025);
-    const [selectedTerm, setSelectedTerm] = useState<string>("Spring Term");
+    const [selectedTerm, setSelectedTerm] = useState<string>("Summer Break");
     const [selectedDesk, setSelectedDesk] = useState<string>("jmc");
     const [showLogs, setShowLogs] = useState<Record<number, boolean>>({});
     const [isDialogOpen, setIsDialogOpen] = useState(false);
