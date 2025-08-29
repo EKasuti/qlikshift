@@ -65,7 +65,7 @@ export const AssignmentSlice: StateCreator<AssignmentState> = (set, get) => {
 
                 set((state) => ({
                     ...state,
-                    assigningShift: false
+                    assigningShifts: false
                 }));
             }
             catch (error) {

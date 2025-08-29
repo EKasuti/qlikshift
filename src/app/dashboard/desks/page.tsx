@@ -250,8 +250,8 @@ function ScheduleTable({ desk, isBreakTerm, selectedDesk, selectedTerm, selected
 }
 
 export default function DesksPage() {
-    const [selectedYear, setSelectedYear] = useState<number>(2025)
-    const [selectedTerm, setSelectedTerm] = useState<string>("Summer Break")
+    const [selectedYear, setSelectedYear] = useState<number>(2026)
+    const [selectedTerm, setSelectedTerm] = useState<string>("Fall Term")
     const [selectedDesk, setSelectedDesk] = useState<string>("jmc")
     const isInterim = selectedTerm.endsWith("Break")
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
@@ -287,6 +287,7 @@ export default function DesksPage() {
         fetchData();
     }, [fetchData]);
 
+    console.log('Desk data:', desk);
 
     // Function to handle creating desk
     const handleCreateDesk = async () => {

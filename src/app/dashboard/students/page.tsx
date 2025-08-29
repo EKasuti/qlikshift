@@ -12,8 +12,8 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } fr
 import { useStore } from "@/utils/useStore";
 
 export default function StudentsPage() {
-    const [selectedYear, setSelectedYear] = useState<number>(2025);
-    const [selectedTerm, setSelectedTerm] = useState<string>("Summer Break");
+    const [selectedYear, setSelectedYear] = useState<number>(2026);
+    const [selectedTerm, setSelectedTerm] = useState<string>("Fall Term");
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [sortField, setSortField] = useState<string>('seniority');
 

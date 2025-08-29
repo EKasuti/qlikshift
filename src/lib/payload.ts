@@ -60,37 +60,56 @@ export const circPayload = {
         {
             day_of_week: "Monday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "24:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "12:00", max_students: 1 },
+                { start_time: "18:00", end_time: "24:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Tuesday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "24:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "12:00", max_students: 1 },
+                { start_time: "18:00", end_time: "24:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Wednesday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "24:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "12:00", max_students: 1 },
+                { start_time: "18:00", end_time: "24:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Thursday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "24:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "12:00", max_students: 1 },
+                { start_time: "18:00", end_time: "24:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Friday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "22:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "12:00", max_students: 1 },
+                { start_time: "18:00", end_time: "22:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Saturday",
             is_open: true,
-            shifts: [{ start_time: "14:00", end_time: "22:00", max_students: 2 }],
+            shifts: [
+                { start_time: "12:00", end_time: "22:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Sunday",
             is_open: true,
-            shifts: [{ start_time: "14:00", end_time: "24:00", max_students: 2 }],
+            shifts: [
+                { start_time: "12:00", end_time: "24:00", max_students: 1 }
+            ],
         },
     ],
 };
@@ -105,38 +124,52 @@ export const bakerPayload = {
         {
             day_of_week: "Monday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "24:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "24:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Tuesday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "24:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "24:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Wednesday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "24:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "24:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Thursday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "24:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "24:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Friday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "22:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "22:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Saturday",
             is_open: true,
-            shifts: [{ start_time: "10:00", end_time: "22:00", max_students: 1 }],
+            shifts: [
+                { start_time: "10:00", end_time: "22:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Sunday",
             is_open: true,
-            shifts: [{ start_time: "10:00", end_time: "24:00", max_students: 1 }],
-        },
+            shifts: [
+                { start_time: "10:00", end_time: "24:00", max_students: 1 }
+            ],
+        }
     ]
 };
 
@@ -150,35 +183,44 @@ export const orozcoPayload = {
         {
             day_of_week: "Monday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "24:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "24:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Tuesday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "24:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "24:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Wednesday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "24:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "24:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Thursday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "24:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "24:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Friday",
             is_open: true,
-            shifts: [{ start_time: "08:00", end_time: "22:00", max_students: 1 }],
+            shifts: [
+                { start_time: "08:00", end_time: "18:00", max_students: 1 }
+            ],
         },
         {
             day_of_week: "Saturday",
             is_open: true,
-            shifts: [{ start_time: "10:00", end_time: "22:00", max_students: 1 }],
+            shifts: [{ start_time: "10:00", end_time: "18:00", max_students: 1 }],
         },
-        {
-            day_of_week: "Sunday",
+        {   day_of_week: "Sunday", 
             is_open: true,
             shifts: [{ start_time: "10:00", end_time: "24:00", max_students: 1 }],
         },
