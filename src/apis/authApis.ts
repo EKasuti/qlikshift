@@ -81,7 +81,7 @@ export const fetchUserDetails = async () => {
             return;
         }
         
-        const response = await fetch(`${config.apiUrl}/auth`, {
+        const response = await fetch(`${config.apiUrl}/auth/profile`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',

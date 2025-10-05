@@ -21,8 +21,8 @@ export interface TermStudent {
     id: string
     preferred_name: string
     email: string
-    isworking: boolean;
-    issub: boolean;
+    isWorking: boolean;
+    isSub: boolean;
     jobs: string
     seniority: number
     preferred_desk: string;
@@ -45,8 +45,8 @@ export interface InterimStudent {
     id: string
     preferred_name: string
     email: string
-    isworking: boolean;
-    issub: boolean;
+    isWorking: boolean;
+    isSub: boolean;
     jobs: string
     seniority: number
     preferred_desk: string;
