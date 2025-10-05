@@ -17,6 +17,24 @@ const Card = React.forwardRef<
 ))
 Card.displayName = "Card"
 
+const QlikCard = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & {
+    rounded?: string
+  }
+>(({ className, rounded = "rounded-[24px]", ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "border border-black dark:border-dark-border bg-white dark:bg-dark-theme text-card-foreground shadow",
+      rounded,
+      className
+    )}
+    {...props}
+  />
+))
+QlikCard.displayName = "QlikCard"
+
 const CardHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -73,4 +91,4 @@ const CardFooter = React.forwardRef<
 ))
 CardFooter.displayName = "CardFooter"
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+export { Card, QlikCard, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }

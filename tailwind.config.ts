@@ -17,6 +17,9 @@ export default {
                 'stats-blue': '#EDF8FA',
                 'stats-orange': '#FEF5EB',
                 'stats-green': '#F3FCF3',
+                'dark-theme':'#151413',
+                'dark-background': '#454545',
+                'dark-border': '#454545'
             }
         }
     },
