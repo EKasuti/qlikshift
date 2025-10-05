@@ -92,7 +92,7 @@ export default function Home() {
           </QlikCard>
 
           <QlikCard
-            rounded="rounded-[24px] md:rounded-l-[24px] md:rounded-tr-[24px] md:rounded-br-[100px]"
+            rounded="rounded-none md:rounded-l-[24px] md:rounded-tr-[24px] md:rounded-br-[100px]"
             className="relative overflow-hidden flex items-center justify-center shadow-xl min-h-[400px] sm:min-h-[600px]"
           >
             {/* Animated background glow */}
