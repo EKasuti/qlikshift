@@ -22,7 +22,7 @@ const QlikCard = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement> & {
     rounded?: string
   }
->(({ className, rounded = "rounded-[24px]", ...props }, ref) => (
+>(({ className, rounded = "rounded-none md:rounded-[24px]", ...props }, ref) => (
   <div
     ref={ref}
     className={cn(

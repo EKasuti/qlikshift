@@ -17,7 +17,7 @@ export function DocsSidebar() {
   const pathname = usePathname()
 
   return (
-    <QlikCard className="rounded-r-none">
+    <QlikCard className="md:rounded-r-none">
       <CardContent className="space-y-4 w-64 p-6 lg:block h-[calc(100vh-4rem)]">
         {docsNav.map((group) => (
           <div key={group.section}>

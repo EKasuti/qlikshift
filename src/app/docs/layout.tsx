@@ -43,7 +43,7 @@ export default function DocsLayout({
             transition-all
           "
         >
-          <QlikCard className="h-full flex flex-col rounded-[12px] lg:rounded-l-none lg:rounded-br-[52px]">
+          <QlikCard className="h-full flex flex-col rounded-none md:rounded-[12px] lg:rounded-l-none lg:rounded-br-[52px]">
             <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
               {children}
             </div>

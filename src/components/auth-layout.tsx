@@ -1,6 +1,7 @@
 import type React from "react"
 import Link from "next/link"
 import { MousePointerClick } from "lucide-react"
+import { Button } from "./ui/button"
 
 interface AuthLayoutProps {
   children: React.ReactNode
@@ -10,21 +11,23 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ children, heading, subheading }: AuthLayoutProps) {
     return ( 
-        <div className="min-h-screen w-full py-6 md:py-16 bg-gray-200">
-             <div className="border-b border-gray-300 mb-10">
+        <div className="min-h-screen w-full bg-primary dark:bg-dark-theme/60">
+             <div className="border-b border-gray-200 dark:border-dark-border">
                 <Link href="/">
-                    <div className="absolute left-4 top-4 bg-white rounded-lg p-1 px-4 cursor-pointer border border-gray-300 hover:bg-gray-100">
-                        <span className="text-sm text-black">Return to Home</span>
+                    <div className="p-2">
+                        <Button variant="outline" className="bg-white dark:bg-dark-theme">
+                            Return to Home
+                        </Button>
                     </div>
                 </Link>
             </div>
      
-            <div className=" flex items-center justify-center mt-4">
-                <div className="mx-auto w-full max-w-[400px] overflow-hidden rounded-lg border bg-white p-8">
+            <div className=" flex items-center justify-center px-4 sm:px-6 lg:px-8 mt-8 md:mt-12">
+                <div className="mx-auto w-full max-w-[400px] overflow-hidden rounded-lg border dark:border-dark-border bg-white dark:bg-dark-theme p-8">
                     <div className="mb-8 text-center items-center">
                         {/* Left - Logo & Name */}
                         <div className="flex items-center justify-center gap-2">
-                            <MousePointerClick className="h-6 w-6 text-accent" />
+                            <MousePointerClick className="h-6 w-6" />
                             <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500 bg-clip-text text-transparent">
                                 QlikShift
                             </h1>

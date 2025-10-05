@@ -36,7 +36,6 @@ export default function LoginPage() {
     return (
         <AuthLayout heading="Login to your account" subheading="Assign shifts with ease & confidence">
             <form className="space-y-2" onSubmit={handleLogin}>
-                {error && <p className="text-red-500">{error}</p>}
                 <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <Input id="email" name="email" type="text" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -51,6 +50,8 @@ export default function LoginPage() {
                     </Button>
                 </div>
 
+                {error && <p className="text-red-500">{error}</p>}
+
                 {/* Demo Login Credentials */}
                 <div className="mt-6 text-center">
                     <Button
@@ -58,16 +59,14 @@ export default function LoginPage() {
                         variant="outline"
                         className="w-full"
                         onClick={() => {
-                        setEmail("admin@qlikshift.com");
-                        setPassword("testPassAdmin@qlik123$");
+                            setEmail("test@gmail.com");
+                            setPassword("testPass123$");
                         }}
                     >
                         Use Demo Credentials
                     </Button>
                 </div>
             </form>
-
-          
 
             <div className="mt-6 text-center text-sm">
                 Don&apos;t have an account?{" "}

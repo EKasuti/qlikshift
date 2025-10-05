@@ -18,7 +18,7 @@ export function PublicNav() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50">
-      <div className="mx-auto flex h-16 bg-white dark:bg-dark-theme border border-black dark:border-dark-border rounded-[12px] items-center justify-between px-4 sm:px-6 lg:px-8 shadow-sm">
+      <div className="mx-auto flex h-16 bg-white dark:bg-dark-theme border border-black dark:border-dark-border rounded-none md:rounded-[12px] items-center justify-between px-4 sm:px-6 lg:px-8 shadow-sm">
         {/* Left - Logo & Name */}
         <div className="flex items-center gap-2">
           <MousePointerClick className="h-6 w-6 text-accent" />
