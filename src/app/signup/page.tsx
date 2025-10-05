@@ -42,7 +42,12 @@ export default function SignupPage() {
 
     return (
         <AuthLayout heading="Create a new account" subheading="Assign shifts with ease & confidence">
-            <form className="space-y-6" onSubmit={handleSignUp}>
+            <form className="space-y-4" onSubmit={handleSignUp}>
+                {/* Error message */}
+                {error && 
+                    <p className="text-red-500 text-sm text-center">{error}</p>
+                }
+
                 {/* Username */}
                 <div className="space-y-2">
                     <Label htmlFor="username"> Username </Label>
@@ -82,13 +87,8 @@ export default function SignupPage() {
                     />
                 </div>
 
-                {/* Error message */}
-                {error && 
-                    <p className="text-red-500 text-sm text-center">{error}</p>
-                }
-
-                {/* Login Button */}
-                <div className="flex justify-center">
+                {/* Signup Button */}
+                <div className="space-y-2">
                     <Button type="submit" className="w-full bg-emerald-700 hover:bg-emerald-800 text-white">
                         {loading ? "Creating account..." : "Sign Up"}
                     </Button>
